@@ -68,7 +68,9 @@ export class ProductController {
             );
         }
 
-        const key = S3Util.generateFileKey("products", filename);
+        // Add timestamp to make filename unique while keeping it descriptive
+        const timestamp = Date.now();
+        const key = `products/${timestamp}-${filename}`;
         const uploadUrl = await S3Util.generateUploadUrl(key, contentType);
 
         results.push({
@@ -146,7 +148,6 @@ export class ProductController {
         price: parseFloat(price),
         categoryId: parseInt(categoryId),
         stock: stock ? parseInt(stock) : 0,
-        sku: sku || null,
         images: images || [],
         variants: variants || [],
         isActive: isActive !== undefined ? isActive : true,

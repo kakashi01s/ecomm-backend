@@ -5,7 +5,7 @@ dotenv.config();
 
 const ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
-const ACCESS_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRY || "15m";
+const ACCESS_EXPIRES_IN = process.env.ACCESS_TOKEN_EXPIRY || "7d";
 const REFRESH_EXPIRES_IN = process.env.REFRESH_TOKEN_EXPIRY || "7d"; // default for regular users
 
 // Generate Access Token
