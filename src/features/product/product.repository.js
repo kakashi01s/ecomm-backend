@@ -39,24 +39,32 @@ export class ProductRepository {
     isActive,
     search,
   }) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const skip = (safePage - 1) * safeLimit;
 
-    const where = {};
+    const where = { AND: [] };
 
-    if (categoryId) where.categoryId = parseInt(categoryId);
-    if (typeof isActive !== "undefined") where.isActive = isActive === "true";
+    if (categoryId) where.AND.push({ categoryId });
+
+    if (typeof isActive !== "undefined") {
+      where.AND.push({ isActive: isActive === "true" });
+    }
+
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
+      where.AND.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ],
+      });
     }
 
     const [products, total] = await Promise.all([
       prisma.product.findMany({
         where,
         skip,
-        take: limit,
+        take: safeLimit,
         include: {
           images: true,
           variants: true,
@@ -71,9 +79,9 @@ export class ProductRepository {
       products,
       pagination: {
         total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(total / safeLimit),
       },
     };
   }
