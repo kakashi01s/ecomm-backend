@@ -1,0 +1,79 @@
+import { CartRepository } from "./cart.repository.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
+import { AsyncHandler } from "../../utils/asyncHandler.js";
+import { CustomError } from "../../utils/custom.Error.js";
+import prisma from "../../core/prisma/client.js";
+
+export class CartController {
+
+    // 1. Adding/Updating item (logged in user)
+
+    static additemToCart = AsyncHandler(async (req, res) => {
+        const { productId, quantity } = req.body;
+        const userId = req.user?.id;
+
+        if (userId) {
+        const cartItem = await CartRepository.addItemToCart(userId, productId, quantity);
+        return res.status(200).json(new ApiResponse(200, cartItem, "Item added/updated in cart successfully"));
+        }
+        
+        const product=await prisma.product.findUnique({
+            where: {id: parseInt(productId)}
+        });
+
+        return res.status(200).json(new ApiResponse(200, {product, quantity}, "Item added to guest cart successfully"));
+        
+        
+    });
+
+    // 2. Getting cart info 
+    static getCartItems = AsyncHandler(async (req, res) => {
+        const userId = req.user?.id; 
+        if (userId) {
+            const cartItems = await CartRepository.getCartItems(userId);
+            return res.status(200).json(new ApiResponse(200, cartItems, "Cart items fetched successfully"));
+        }
+        const { guestItems } = req.body; // Frontend localStorage se bhejega
+         if (!guestItems || guestItems.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "Guest cart is empty"));
+        }
+        const cartItems = await CartRepository.getGuestCartItems(guestItems);
+        return res.status(200).json(new ApiResponse(200, cartItems, "Guest cart items fetched successfully"));
+ });
+
+
+
+// 3. removing item from cart (logged in user)
+  static decrementItem = AsyncHandler(async (req, res) => {
+        const { productId } = req.params;
+        const userId = req.user?.id;
+
+        // Handle Guest User
+        if (!userId) {
+            return res.status(200).json(new ApiResponse(200, null, "Guest: Decrease count in local storage"));
+        }
+
+        // Handle Logged-in User
+        const result = await CartRepository.decrementItem(userId, productId);
+
+        if (!result) {
+            return res.status(404).json(new ApiResponse(404, null, "Product not found in your cart"));
+        }
+
+        return res.status(200).json(new ApiResponse(200, result, "Cart quantity updated successfully"));
+    });
+
+    // Logic for the Trash/Remove button
+    static deleteCartItem = AsyncHandler(async (req, res) => {
+        const { productId } = req.params;
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(200).json(new ApiResponse(200, null, "Guest: Remove from local storage"));
+        }
+
+        await CartRepository.deleteCartItem(productId, userId);
+        return res.status(200).json(new ApiResponse(200, null, "Product removed from cart"));
+    });
+}
+        
