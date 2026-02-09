@@ -9,22 +9,17 @@ export class CartController {
     // 1. Adding/Updating item (logged in user)
 
     static additemToCart = AsyncHandler(async (req, res) => {
-        const { productId, quantity } = req.body;
-        const userId = req.user?.id;
+    const { productId, quantity } = req.body;
+    const userId = req.user?.id;
 
-        if (userId) {
-        const cartItem = await CartRepository.addItemToCart(userId, productId, quantity);
-        return res.status(200).json(new ApiResponse(200, cartItem, "Item added/updated in cart successfully"));
-        }
-        
-        const product=await prisma.product.findUnique({
-            where: {id: parseInt(productId)}
-        });
+    
+    if (!userId) {
+        throw new CustomError(401, "Please login to add items to cart");
+    }
 
-        return res.status(200).json(new ApiResponse(200, {product, quantity}, "Item added to guest cart successfully"));
-        
-        
-    });
+    const cartItem = await CartRepository.addItemToCart(userId, productId, quantity);
+    return res.status(200).json(new ApiResponse(200, cartItem, "Item added to cart"));
+});
 
     // 2. Getting cart info 
     static getCartItems = AsyncHandler(async (req, res) => {
@@ -42,26 +37,22 @@ export class CartController {
  });
 
 
-
-// 3. removing item from cart (logged in user)
-  static decrementItem = AsyncHandler(async (req, res) => {
-        const { productId } = req.params;
-        const userId = req.user?.id;
-
-        // Handle Guest User
-        if (!userId) {
-            return res.status(200).json(new ApiResponse(200, null, "Guest: Decrease count in local storage"));
+ // 3. update cart items
+ static updateCartItem = AsyncHandler(async (req, res) => {
+    const{productId,action}=req.body;
+    const userId = req.user?.id;
+    if (!userId) {
+        throw new CustomError(401, "Please login to update cart items");
+    }
+    
+    if (!["increment", "decrement"].includes(action)) {
+            throw new CustomError(400, "Invalid action. Use increment or decrement.");
         }
+    const updatedCartItem = await CartRepository.updateCartItem(userId, productId, action);
+    return res.status(200).json(new ApiResponse(200, updatedCartItem, "Cart item updated successfully"));
+ });
+    
 
-        // Handle Logged-in User
-        const result = await CartRepository.decrementItem(userId, productId);
-
-        if (!result) {
-            return res.status(404).json(new ApiResponse(404, null, "Product not found in your cart"));
-        }
-
-        return res.status(200).json(new ApiResponse(200, result, "Cart quantity updated successfully"));
-    });
 
     // Logic for the Trash/Remove button
     static deleteCartItem = AsyncHandler(async (req, res) => {

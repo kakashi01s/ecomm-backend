@@ -1,4 +1,5 @@
 import prisma from "../../core/prisma/client.js";
+import { CustomError } from "../../utils/custom.Error.js";
 
 export class CartRepository {   
 
@@ -42,6 +43,8 @@ export class CartRepository {
         });
     }
 
+    
+
     // 3. Guest Cart Info 
     static async getGuestCartItems(guestItems) {
         // guestItems format: [{productId: 1, quantity: 2}]
@@ -58,28 +61,41 @@ export class CartRepository {
         }));
     }
 
-    // 4. Removing item from cart (Logged in user)
-    static async decrementItem(userId, productId) {
+    // update cart item quantity (increment/decrement)
+    static async updateCartItem(userId, productId, action) {    
         const cartItem = await prisma.cartItem.findFirst({
             where: {
                 productId: parseInt(productId),
-                userId: parseInt(userId)
+                userId  : parseInt(userId)
             }
         });
 
-        if (!cartItem) return null;
+        if (!cartItem) {
+            throw new CustomError(404, "Cart item not found");
+        }
+        
+        let newQuantity = cartItem.quantity;
+        if (action === "increment") {
+            newQuantity = cartItem.quantity + 1;
+        } else if (action === "decrement") {
+            newQuantity = cartItem.quantity - 1;
+        }
 
-        if (cartItem.quantity > 1) {
-            return await prisma.cartItem.update({
-                where: { id: cartItem.id },
-                data: { quantity: cartItem.quantity - 1 }
-            });
-        } else {
+        if (newQuantity <= 0) {
+
             return await prisma.cartItem.delete({
                 where: { id: cartItem.id }
             });
+        } 
+        else {
+           
+            return await prisma.cartItem.update({
+                where: { id: cartItem.id },
+                data: { quantity: newQuantity }
+            });
         }
     }
+
 
     // 5. Hard Deleting cart item (Login user ke liye)
     static async deleteCartItem(itemId, userId) {
