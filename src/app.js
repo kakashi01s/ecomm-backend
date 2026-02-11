@@ -76,6 +76,7 @@ app.use(cookieParser());
 import { router as authRoutes } from "./features/auth/auth.routes.js";
 import { router as s3Routes } from "./features/s3/s3.routes.js";
 import { router as productRoutes } from "./features/product/product.routes.js";
+import categoryRoutes from "./features/category/category.routes.js";
 
 app.use("/api/auth", authRoutes);
 app.use("/api/s3", s3Routes);

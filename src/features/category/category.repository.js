@@ -1,4 +1,4 @@
-import prisma from "../../core/prisma/client";
+import prisma from "../../core/prisma/client.js";
 
 export class CategoryRepository {   
 
@@ -8,7 +8,7 @@ export class CategoryRepository {
         return prisma.category.create({
             data:{
                 name: data.name,
-                parentId: data.patentId? parseInt(data.patentId) : null,
+                parentId: data.parentId? parseInt(data.parentId) : null,
                 
             }
         });
@@ -23,10 +23,11 @@ export class CategoryRepository {
                 children:{
                     include: {
                         children: true,
-                    },
+                    
                     _count: {
                         select: { products: true }   // counting products in each category
                     }
+                }
 
                 }
             }

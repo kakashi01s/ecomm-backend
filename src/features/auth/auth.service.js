@@ -136,6 +136,8 @@ export class OtpService {
   static async sendOtp(email) {
     const otp = this.generateOtp();
 
+    console.log(`Generated OTP for ${email}: ${otp}`);
+
     // Set expiry: Format: `${otp}:${expiryTimestamp}`
     const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes (as timestamp number)
     const token = `${otp}:${expiresAt}`;

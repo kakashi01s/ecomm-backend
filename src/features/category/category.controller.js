@@ -1,12 +1,11 @@
-import { CategoryRepository } from "./category.repository";
-import {apiResponse} from "../../core/response/apiResponse";
-import {asyncHandler} from "../../core/middleware/asyncHandler";
-import { CustomError } from "../../utils/custom.error";
-
+import { CategoryRepository } from "./category.repository.js";
+import { ApiResponse } from "../../utils/apiResponse.js";
+import { AsyncHandler } from "../../utils/asyncHandler.js";
+import { CustomError } from "../../utils/custom.Error.js";
 export class CategoryController {
 
     // 1.create a new category
-    static createCategory = asyncHandler(async (req, res) => {
+    static createCategory = AsyncHandler(async (req, res) => {
         const {name , parentId} = req.body;
 
         if(!name){
@@ -23,20 +22,20 @@ export class CategoryController {
         const category = await CategoryRepository.createCategory({name, parentId});
         return res
         .status(201)
-        .json(new apiResponse(201, category, "Category created successfully"));
+        .json(new ApiResponse(201, category, "Category created successfully"));
     });
 
     // 2.get all categories
-    static getAllCategories = asyncHandler(async (req, res) => {
+    static getAllCategories = AsyncHandler(async (req, res) => {
         const allCategories = await CategoryRepository.getAllCategories();
         
         return res
         .status(200)
-        .json(new apiResponse(200, allCategories, "Categories fetched successfully"));
+        .json(new ApiResponse(200, allCategories, "Categories fetched successfully"));
     });
 
     // 3.Update category 
-    static updateCategory = asyncHandler(async (req, res) => {
+    static updateCategory = AsyncHandler(async (req, res) => {
         const {id} = req.params;
         const {name, parentId} = req.body;
 
@@ -54,12 +53,12 @@ export class CategoryController {
         const updatedCategory = await CategoryRepository.updateCategory(id, {name, parentId});
         return res
         .status(200)
-        .json(new apiResponse(200, updatedCategory, "Category updated successfully"));
+        .json(new ApiResponse(200, updatedCategory, "Category updated successfully"));
     });
 
 
     //4.delete category 
-    static deleteCategory = asyncHandler(async (req, res) => {
+    static deleteCategory = AsyncHandler(async (req, res) => {
         const {id} = req.params; 
         const categoryExists = await CategoryRepository.exists(id);
         if(!categoryExists){
@@ -68,11 +67,11 @@ export class CategoryController {
         await CategoryRepository.deleteCategory(id);
         return res
         .status(200)
-        .json(new apiResponse(200, null, "Category deleted successfully"));
+        .json(new ApiResponse(200, null, "Category deleted successfully"));
     });
 
     // 5.get category by id
-    static getCategoryById = asyncHandler(async (req, res) => {
+    static getCategoryById = AsyncHandler(async (req, res) => {
         const {id} = req.params;
         const category = await CategoryRepository.getCategoryById(id);
         if(!category){
@@ -80,7 +79,7 @@ export class CategoryController {
         }
         return res
         .status(200)
-        .json(new apiResponse(200, category, "Category fetched successfully"));
+        .json(new ApiResponse(200, category, "Category fetched successfully"));
     });
  
     
