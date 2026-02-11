@@ -108,12 +108,14 @@ model ProductVariant {
 
 model CartItem {
   id        Int @id @default(autoincrement())
-  userId    Int
+  userId    Int?  
+  sessionId String?
   productId Int
   quantity  Int @default(1)
 
-  user    User    @relation(fields: [userId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
   product Product @relation(fields: [productId], references: [id])
+
 }
 
 model Wishlist {
