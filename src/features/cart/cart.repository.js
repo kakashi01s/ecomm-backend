@@ -98,10 +98,10 @@ export class CartRepository {
 
 
     // 5. Hard Deleting cart item (Login user ke liye)
-    static async deleteCartItem(itemId, userId) {
+    static async deleteCartItem(productId, userId) {
         return await prisma.cartItem.deleteMany({
             where: {
-                id: parseInt(itemId),
+                productId: parseInt(productId),
                 userId: parseInt(userId)
             }
         });

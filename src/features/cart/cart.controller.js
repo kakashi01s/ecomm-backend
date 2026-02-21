@@ -21,42 +21,81 @@ export class CartController {
     return res.status(200).json(new ApiResponse(200, cartItem, "Item added to cart"));
 });
 
-    // 2. Getting cart info 
-    static getCartItems = AsyncHandler(async (req, res) => {
-        const userId = req.user?.id; 
-        if (userId) {
-            const cartItems = await CartRepository.getCartItems(userId);
-            return res.status(200).json(new ApiResponse(200, cartItems, "Cart items fetched successfully"));
-        }
-        const { guestItems } = req.body; // Frontend localStorage se bhejega
-         if (!guestItems || guestItems.length === 0) {
-        return res.status(200).json(new ApiResponse(200, [], "Guest cart is empty"));
-        }
-        const cartItems = await CartRepository.getGuestCartItems(guestItems);
-        return res.status(200).json(new ApiResponse(200, cartItems, "Guest cart items fetched successfully"));
- });
+static calculateTotals = (cartItems, pincode) => {  
+    // 1. Subtotal: (Price * Quantity) 
+    const subtotal = cartItems.reduce((acc, item) => {
+        const price = item.product?.price || 0;
+        return acc + (price * item.quantity);
+    }, 0);
+
+    let shipping = 0;
+    if (subtotal > 0) {
+        shipping = (pincode && String(pincode).startsWith("3")) ? 40 : 100;
+    }   
+    // 3. Platform Fee: Fixed charge ₹10 (Sirf agar items ho cart mein)
+    const platformFee = subtotal > 0 ? 10 : 0;      
+    const totalAmount = subtotal + shipping + platformFee;
+
+    return[
+        
+           {label: "Subtotal", value: Number(subtotal.toFixed(2))}
+        , {label: "Shipping", value: Number(shipping.toFixed(2))}
+        , {label: "Platform Fee", value: Number(platformFee.toFixed(2))}
+        , {label: "Total Amount", value: Number(totalAmount.toFixed(2))}
+    ];
+};
 
 
- // 3. update cart items
- static updateCartItem = AsyncHandler(async (req, res) => {
-    const{productId,action}=req.body;
-    const userId = req.user?.id;
-    if (!userId) {
-        throw new CustomError(401, "Please login to update cart items");
-    }
+
     
-    if (!["increment", "decrement"].includes(action)) {
+ 
+// 2. Getting cart items (for both logged in and guest users)
+    static getCartItems = AsyncHandler(async (req, res) => {
+        const userId = req.user?.id;
+        const { guestItems = [], pincode } = req.body || {};
+        if(!pincode){
+            throw new CustomError(400, "Pincode is required to calculate shipping");
+        }
+
+        let cartItems = userId? await CartRepository.getCartItems(userId) 
+        : await CartRepository.getGuestCartItems(guestItems||[]);
+
+        const totals = CartController.calculateTotals(cartItems, pincode);
+        return res.status(200).json(new ApiResponse(200, {cartItems, totals}, "Cart items fetched successfully"));
+    });
+
+
+    // 3. Update cart items (Increment/Decrement)
+    static updateCartItem = AsyncHandler(async (req, res) => {
+        const { productId, action,pincode } = req.body;
+        const userId = req.user?.id;
+
+        
+
+        if (!userId) {
+            throw new CustomError(401, "Please login to update cart items");
+        }
+        
+        if (!pincode) {
+            throw new CustomError(400, "Pincode is required to calculate shipping");
+        }
+        if (!["increment", "decrement"].includes(action)) {
             throw new CustomError(400, "Invalid action. Use increment or decrement.");
         }
-    const updatedCartItem = await CartRepository.updateCartItem(userId, productId, action);
-    return res.status(200).json(new ApiResponse(200, updatedCartItem, "Cart item updated successfully"));
- });
+
+        const updatedCartItem = await CartRepository.updateCartItem(userId, productId, action);
+        const cartItems = await CartRepository.getCartItems(userId);
+        const totals = CartController.calculateTotals(cartItems, pincode);
+        return res.status(200).json(new ApiResponse(200,{cartItems, totals}, "Cart item updated successfully"));
+    });
+
+
     
 
 
     // Logic for the Trash/Remove button
     static deleteCartItem = AsyncHandler(async (req, res) => {
-        const { productId } = req.params;
+        const productId = parseInt(req.params.productId, 10);
         const userId = req.user?.id;
 
         if (!userId) {
