@@ -18,7 +18,7 @@ export class AuthUI {
           stac.text("Sign in to access your cart and saved items.", { style: stac.textStyle({ color: Brand.textSecondary }), textAlign: displayType === 'screen' ? "center" : "start" }),
           stac.sizedBox({ height: 32 }),
           
-          stac.textField({
+          stac.textFormField({
             id: "email", 
             labelText: "Email Address",
             keyboardType: "emailAddress",
@@ -58,7 +58,7 @@ export class AuthUI {
           stac.text(`Welcome back, ${email}`, { style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
           stac.sizedBox({ height: 24 }),
           
-          stac.textField({ id: "password", labelText: "Password", obscureText: true, prefixIcon: "lock" }),
+          stac.textFormField({ id: "password", labelText: "Password", obscureText: true, prefixIcon: "lock" }),
           stac.sizedBox({ height: 32 }),
           
           ui.primaryButton({
@@ -90,7 +90,7 @@ export class AuthUI {
           stac.text(`We sent a code to ${email}`, { style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
           stac.sizedBox({ height: 24 }),
           
-          stac.textField({ id: "otp", labelText: "6-Digit Code", keyboardType: "number", prefixIcon: "dialpad" }),
+          stac.textFormField({ id: "otp", labelText: "6-Digit Code", keyboardType: "number", prefixIcon: "dialpad" }),
           stac.sizedBox({ height: 32 }),
           
           ui.primaryButton({

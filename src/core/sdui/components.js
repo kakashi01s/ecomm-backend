@@ -232,7 +232,8 @@ productCard: ({ id, title, price, imageUrl, isOnSale = false, onCardTap, onAddTo
     hintText = "Search for products...", 
     isReadOnly = true, 
     onTapAction, 
-    inputId = "search_query" 
+    inputId = "search_query" ,
+    autofocus = false
   }) => {
     if (isReadOnly) {
       return stac.inkWell({
@@ -262,29 +263,52 @@ productCard: ({ id, title, price, imageUrl, isOnSale = false, onCardTap, onAddTo
     }
 
 return stac.container({
-      padding: [0, 4, 0, 4],
-      child: stac.textField({
-        id: inputId,
-        hintText: hintText,
-        // The framework expects a simple object for decorations/borders
-        decoration: {
-          hintText: hintText,
-          prefixIcon: stac.svg({ src: "logo_search", color: Brand.textSecondary, width: 20, height: 20 }),
-          contentPadding: [16, 10, 16, 10],
-          // Define borders as plain objects
-          border: { 
-            type: "outlineInputBorder", 
-            borderRadius: 24, 
-            borderColor: Brand.divider 
-          },
-          focusedBorder: { 
-            type: "outlineInputBorder", 
-            borderRadius: 24, 
-            borderColor: Brand.primary 
-          }
-        }
-      })
-    });
+  padding: [0, 4, 0, 4],
+  child: stac.textField({
+    id: inputId,
+    autofocus: autofocus,
+    onChanged: stac.apiRequest({
+      url: "/dashboard/search/live",
+      method: "POST",
+      body: { query: { actionType: "getFormValue", id: inputId } }
+    }),
+    decoration: {
+   
+      hintText: hintText,
+      filled: false, 
+      
+      // prefixIcon: stac.svg({ src: "logo_search", color: Brand.textSecondary, width: 20, height: 20 }),
+      
+      suffixIcon: stac.padding({ 
+        all: 12, 
+        child: stac.svg({ src: "logo_search", color: Brand.primary, width: 20, height: 20 }) 
+      }),
+      
+      contentPadding: [16, 10, 16, 10],
+      
+      // 1. BASE BORDER 
+      border: { 
+        type: "outlineInputBorder", 
+        borderRadius: 24, 
+        color: Brand.textPrimary
+      },
+
+      // 2. ENABLED BORDER (Not focused)
+      enabledBorder: { 
+        type: "outlineInputBorder", 
+        borderRadius: 24, 
+        color: Brand.textPrimary
+      },
+      
+      // 3. FOCUSED BORDER 
+      focusedBorder: { 
+        type: "outlineInputBorder", 
+        borderRadius: 24, 
+        color: Brand.primary
+      }
+    }
+  })
+  });
   },
 
   // ----------------------------------------

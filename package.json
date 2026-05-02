@@ -29,6 +29,7 @@
     "nodemailer": "^6.10.1",
     "nodemon": "^3.1.9",
     "pg": "^8.14.1",
+    "redis": "^5.12.1",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

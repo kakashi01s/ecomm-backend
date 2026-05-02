@@ -1,6 +1,6 @@
 export const stac = {
   // ==========================================
-  // 1. STYLING HELPERS (The Customisation)
+  // 1. STYLING HELPERS
   // ==========================================
   textStyle: ({ fontSize, fontWeight, color, letterSpacing } = {}) => ({
     fontSize, fontWeight, color, letterSpacing
@@ -36,6 +36,14 @@ export const stac = {
     padding, 
     scrollDirection, 
     child 
+  }),
+
+  // Web-compatible horizontal scroll — wraps in a ScrollConfiguration that 
+  // enables drag scrolling on web (pointer devices)
+  webScrollRow: ({ children, padding } = {}) => ({
+    type: "webScrollRow",
+    padding,
+    children: children || []
   }),
 
   listView: ({ children, padding, shrinkWrap = false } = {}) => ({
@@ -95,15 +103,12 @@ export const stac = {
     type: "text", data: text, style, textAlign, maxLines, overflow 
   }),
 
-image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => ({
+  image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => ({
     type: "image", 
     imageType: imageType, 
-    src, 
-    color, 
-    width, 
-    height, 
-    fit 
+    src, color, width, height, fit 
   }),
+
   icon: ({ icon, color, size }) => ({
     type: "icon", icon, color, size
   }),
@@ -117,17 +122,33 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => 
     style: style || { backgroundColor: color } 
   }),
 
-  textField: ({ id, hintText, labelText, obscureText, keyboardType, prefixIcon, validators } = {}) => ({
+  textFormField: ({ id, hintText, labelText, obscureText, keyboardType, prefixIcon, suffixIcon, validators, decoration } = {}) => ({
     type: "textFormField",
     id,
-    decoration: {
+    decoration: decoration || {
       hintText, labelText,
-      prefixIcon: prefixIcon ? { type: "icon", icon: prefixIcon } : undefined,
+      prefixIcon: prefixIcon ? (typeof prefixIcon === 'string' ? { type: "icon", icon: prefixIcon } : prefixIcon) : undefined,
+      suffixIcon: suffixIcon ? (typeof suffixIcon === 'string' ? { type: "icon", icon: suffixIcon } : suffixIcon) : undefined,
       border: { type: "outlineInputBorder" }
     },
     obscureText: obscureText || false,
     keyboardType,
     validators: validators || [] 
+  }),
+
+  textField: ({ id, hintText, labelText, obscureText, keyboardType, prefixIcon, suffixIcon, validators, decoration, autofocus } = {}) => ({
+    type: "textField",
+    id,
+    decoration: decoration || {
+      hintText, labelText,
+      prefixIcon: prefixIcon ? (typeof prefixIcon === 'string' ? { type: "icon", icon: prefixIcon } : prefixIcon) : undefined,
+      suffixIcon: suffixIcon ? (typeof suffixIcon === 'string' ? { type: "icon", icon: suffixIcon } : suffixIcon) : undefined,
+      border: { type: "outlineInputBorder" }
+    },
+    obscureText: obscureText || false,
+    keyboardType,
+    validators: validators || [],
+    autofocus: autofocus || false
   }),
 
   checkbox: ({ id, title, value = false, activeColor } = {}) => ({
@@ -161,26 +182,13 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => 
   
   responsiveVisibility: ({ hiddenWhen = [], visibleWhen = [], child }) => ({
     type: "responsive_visibility",
-    hiddenWhen, 
-    visibleWhen, 
-    child
-  }),
-
-  responsiveRowColumn: ({ isRow = true, children = [] }) => ({
-    type: "responsive_row_column",
-    isRow, 
-    children
+    hiddenWhen, visibleWhen, child
   }),
 
   gridView: ({ children, crossAxisCount = 2, mainAxisSpacing = 16, crossAxisSpacing = 16, childAspectRatio = 0.75, padding, shrinkWrap = false, physics } = {}) => ({
     type: "gridView",
-    crossAxisCount, 
-    mainAxisSpacing, 
-    crossAxisSpacing, 
-    childAspectRatio, 
-    padding,
-    shrinkWrap, 
-    physics,    
+    crossAxisCount, mainAxisSpacing, crossAxisSpacing, childAspectRatio, 
+    padding, shrinkWrap, physics,    
     children: children || []
   }),
 
@@ -199,13 +207,12 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => 
   inkWell: ({ action, child }) => ({
     type: "inkWell", onTap: action, child
   }),
+
   defaultBottomNavigationController: ({ length, initialIndex = 0, child }) => ({
     type: "defaultBottomNavigationController",
-    length,
-    initialIndex,
-    child
+    length, initialIndex, child
   }),
-  // Add to 2. LAYOUTS & CONTAINERS
+
   bottomNavigationBar: ({ items, backgroundColor, selectedItemColor, unselectedItemColor }) => ({
     type: "bottomNavigationBar",
     backgroundColor, selectedItemColor, unselectedItemColor,
@@ -217,72 +224,54 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => 
     label
   }),
 
-showDialog: (widget) => ({ 
-    actionType: "showDialog", // camelCase exactly as defined in Stac v1.4.0
-    widget // mapped to "widget" key
-  }),
+  showDialog: (widget) => ({ actionType: "showDialog", widget }),
 
-  showBottomSheet: (widget) => ({ 
-    actionType: "showModalBottomSheet", // camelCase exactly as defined in Stac v1.4.0
-    widget // mapped to "widget" key
-  }),
+  showBottomSheet: (widget) => ({ actionType: "showModalBottomSheet", widget }),
+
   customScrollView: ({ slivers, physics } = {}) => ({
     type: "customScrollView",
     physics,
     slivers: slivers || []
   }),
 
-  sliverAppBar: ({ title, backgroundColor, pinned = true, floating = false, expandedHeight, flexibleSpace, leading, actions }) => ({
+  sliverAppBar: ({ title, backgroundColor, pinned = true, floating = false, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle } = {}) => ({
     type: "sliverAppBar",
     title: typeof title === 'string' ? stac.text(title, { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold" }) }) : title,
-    backgroundColor,
-    pinned,
-    floating,
-    expandedHeight,
-    flexibleSpace,
-    leading,
-    actions
+    backgroundColor, pinned, floating, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle
   }),
 
   flexibleSpaceBar: ({ background, title, centerTitle = false, collapseMode = "parallax" }) => ({
     type: "flexibleSpaceBar",
-    background,
-    title,
-    centerTitle,
-    collapseMode
+    background, title, centerTitle, collapseMode
   }),
 
   sliverToBoxAdapter: ({ child }) => ({
-    type: "sliverToBoxAdapter",
-    child
+    type: "sliverToBoxAdapter", child
   }),
 
-  // Add to 3. UI ELEMENTS & INPUTS
-  
-  // HERO ANIMATION: Animates a widget seamlessly between two different screens!
   hero: ({ tag, child }) => ({
-    type: "hero",
-    tag, // Must be unique and match exactly on both screens!
-    child
+    type: "hero", tag, child
   }),
+
   svg: ({ src, isNetwork = false, color, width, height, rotationDegrees = 0 }) => ({
     type: "svg_asset",
-    src,              // Either the AppIcon constant OR a full "https://..." URL
-    isNetwork,        // Boolean flag
-    color,            // Hex string (e.g., "#FF5722")
-    width,
-    height,
-    rotationDegrees   // Accepts 0-360 degrees for easy server-side rotation
+    src, isNetwork, color, width, height, rotationDegrees
   }),
+
   video: ({ src, autoPlay = true, loop = true, muted = true, showControls = false, width, height, fit = "cover" }) => ({
     type: "video",
-    src,
-    autoPlay,
-    loop,
-    muted,
-    showControls,
-    width,
+    src, autoPlay, loop, muted, showControls, width, height, fit
+  }),
+
+  // ==========================================
+  // 6. CAROUSEL
+  // Banner carousel with auto-scroll + dot indicators
+  // ==========================================
+  carousel: ({ items, height = 180, autoPlayIntervalSeconds = 4, borderRadius = 16 } = {}) => ({
+    type: "carousel",
     height,
-    fit
+    autoPlayIntervalSeconds,
+    borderRadius,
+    items: items || []
   }),
 };

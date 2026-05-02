@@ -24,7 +24,7 @@ import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
 
 import { AuthController } from "./features/auth/auth.controller.js";
-
+import { redisManager } from './config/redisClient.js';
 const app = express();
 const server = http.createServer(app);
 
