@@ -58,6 +58,7 @@ model User {
 model Category {
   id       Int        @id @default(autoincrement())
   name     String
+  imageUrl String?   
   parentId Int?
   parent   Category?  @relation("CategoryToParent", fields: [parentId], references: [id])
   children Category[] @relation("CategoryToParent")
@@ -91,10 +92,20 @@ model Product {
 model ProductImage {
   id        Int     @id @default(autoincrement())
   url       String
+  mediaType String  @default("image") 
   productId Int
   product   Product @relation(fields: [productId], references: [id])
 }
-
+model Banner {
+  id        Int      @id @default(autoincrement())
+  title     String?  
+  mediaUrl  String   // The S3/CloudFront URL of the .mp4 or image
+  mediaType String   @default("image")
+  linkUrl   String?  
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 model ProductVariant {
   id        Int     @id @default(autoincrement())
   productId Int

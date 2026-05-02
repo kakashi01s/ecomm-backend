@@ -11,115 +11,97 @@ import { Roles } from "../../core/constants.js";
 
 export class AuthService {
   /**
-   * Step 1: Handles Login, Resend Verification, or Initial Creation.
+   * STEP 0: Check how this user should log in
    */
-  static async handleLoginOrStartCreation({ email, name, role }) {
-    const existingUser = await AuthRepository.findByEmail(email);
-
-    if (existingUser) {
-      // --- Case 1 & 2: User exists ---
-      if (existingUser.isVerified) {
-        // Case 1: Verified User -> Send OTP for Login
-        await OtpService.sendOtp(email);
-        return { message: `Login OTP sent to your email ${email}` };
-      } else {
-        // Case 2: Unverified User -> Resend OTP for Verification/Completion
-        // Optionally update other details like name/role if provided
-        await AuthRepository.updateUser(existingUser.id, {
-          name: name || existingUser.name,
-          role: role || existingUser.role,
-          // We don't need to update password unless explicitly requested for security
-        });
-        await OtpService.sendOtp(email);
-        return {
-          message: `Verification OTP resent to your email ${email}. Please complete sign-up.`,
-        };
-      }
-    } else {
-      // --- Case 3: User does not exist -> Create User and Send OTP for Verification ---
-
-      // NOTE: Your Prisma schema requires a 'password' field. Hash the email as a placeholder
-      // since the login flow is OTP-only.
-
-      // Create user record with isVerified: false
-      await AuthRepository.createUser({
-        name,
-        email,
-        role: role || Roles.CUSTOMER,
-        isVerified: false,
-      });
-
-      // Send OTP for verification
-      await OtpService.sendOtp(email);
-      return {
-        message: `New user record created. Verification OTP sent to ${email}.`,
-      };
+  static async determineAuthMethod(email) {
+    const user = await AuthRepository.findByEmail(email);
+    
+    // If the user exists and has a password set, they use the Password screen
+    if (user && user.password) {
+      return "REQUIRES_PASSWORD";
     }
+    
+    // Otherwise, they are new or strictly use OTP
+    return "REQUIRES_OTP";
   }
 
   /**
-   * Step 2: Handles OTP verification and completes the Login or Creation process.
+   * STEP 1: Generate and Send OTP.
+   * If the user doesn't exist, create an unverified placeholder account.
    */
-  static async handleVerifyAndComplete(email, otp) {
+  static async generateAndSendOtp(email) {
+    let user = await AuthRepository.findByEmail(email);
+
+    if (!user) {
+      // Create a new unverified user if they do not exist
+      user = await AuthRepository.createUser({
+        email,
+        name: email.split("@")[0], // Fallback name from email
+        role: Roles.CUSTOMER,
+        isVerified: false,
+      });
+    }
+
+    // Generate and email the OTP using your existing OtpService
+    await OtpService.sendOtp(email);
+    return true;
+  }
+
+  /**
+   * STEP 2A: Verify Password Login
+   */
+  static async verifyPassword(email, password) {
+    const user = await AuthRepository.findByEmail(email);
+    if (!user) throw new Error("User not found.");
+    if (!user.password) throw new Error("This account uses OTP to login.");
+
+    // Check Password Hash
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) throw new Error("Invalid password.");
+
+    // Check if verified (optional, depends on if you require OTP first)
+    if (!user.isVerified) {
+       await AuthRepository.updateUser(user.id, { isVerified: true });
+    }
+
+    // Return the tokens
+    return await this._generateAndSaveTokens(user);
+  }
+
+  /**
+   * STEP 2B: Verify OTP Login and complete account creation
+   */
+  static async verifyOtp(email, otp) {
     const user = await AuthRepository.findByEmail(email);
     if (!user) throw new Error(`User not found with email ${email}`);
 
-    // 1. Verify OTP (Clears token on success or throws on failure/expiry)
+    // Verify OTP (Clears token on success or throws on failure/expiry)
     await OtpService.verifyOtp(email, otp);
 
     let finalUser = user;
 
-    // 2. Check if the user was unverified and finalize creation if necessary
+    // Check if the user was unverified and finalize creation
     if (!user.isVerified) {
-      // Finalize creation: set isVerified = true
-      // We use the result of updateUser as finalUser to ensure we have the latest record data
-      finalUser = await AuthRepository.updateUser(user.id, {
-        isVerified: true,
-      });
+      finalUser = await AuthRepository.updateUser(user.id, { isVerified: true });
     }
 
-    // --- FIX FOR JWT SIZE START ---
-    // 1. Create a minimal payload for the Access Token
-    const accessPayload = {
-      id: user.id,
-      role: user.role,
-      // Do NOT include user.verificationToken, user.createdAt, user.refreshToken, etc.
-    };
+    // Return the tokens
+    return await this._generateAndSaveTokens(finalUser);
+  }
 
-    // 2. Create a minimal payload for the Refresh Token
-    const refreshPayload = {
-      id: user.id,
-      role: user.role,
-    };
-    // --- FIX FOR JWT SIZE END ---
+  /**
+   * INTERNAL HELPER: Generates minimal JWTs and saves the refresh token
+   */
+  static async _generateAndSaveTokens(user) {
+    const accessPayload = { id: user.id, role: user.role };
+    const refreshPayload = { id: user.id, role: user.role };
 
-    const accessToken = generateAccessToken(accessPayload); // Use the minimal payload
-    const refreshToken = generateRefreshToken(refreshPayload); // Use the minimal payload
+    const accessToken = generateAccessToken(accessPayload);
+    const refreshToken = generateRefreshToken(refreshPayload);
 
-    // 4. Store refresh token in DB
-    await AuthRepository.updateRefreshToken(finalUser.id, refreshToken);
+    await AuthRepository.updateRefreshToken(user.id, refreshToken);
 
-    // 5. SANITIZE USER OBJECT AND ATTACH TOKENS FOR RESPONSE
-    // Use destructuring to omit sensitive/internal fields from the response payload
-    const {
-      password, // Omit
-      verificationToken, // Omit
-      resetToken, // Omit
-      refreshToken: storedRefreshToken, // Omit the stored (potentially hashed) token
-      ...userForResponse // Keep all other fields (id, name, email, role, isVerified, etc.)
-    } = finalUser;
-
-    // Attach the newly generated tokens to the sanitized object
-    userForResponse.accessToken = accessToken;
-    userForResponse.refreshToken = refreshToken;
-
-    const message = user.isVerified
-      ? "Logged in successfully"
-      : "User verified and logged in successfully";
-
-    console.log("verified token");
-    // Return the sanitized user object
-    return { message, user: userForResponse };
+    return { accessToken, refreshToken };
   }
 }
 

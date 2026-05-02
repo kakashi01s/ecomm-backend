@@ -6,6 +6,9 @@
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
     "start": "node -r dotenv/config --experimental-json-modules src/index.js"
   },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
