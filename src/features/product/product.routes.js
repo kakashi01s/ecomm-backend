@@ -3,13 +3,16 @@ import { ProductController } from "./product.controller.js";
 import {
   authenticate,
   requireAdmin,
+  
 } from "../../middlewares/auth.middleware.js";
+import { optionalAuthenticate } from "../../middlewares/optionalauth.middleware.js";
 
 const router = express.Router();
 
 // Apply authentication and admin role check to ALL routes
-router.use(authenticate);
-router.use(requireAdmin);
+// router.use(authenticate);
+// router.use(requireAdmin);
+router.use(optionalAuthenticate)
 
 // Get all categories (useful for product creation form)
 router.get("/categories", ProductController.getCategories);

@@ -3,6 +3,7 @@ import { ApiResponse } from "../../utils/apiResponse.js";
 import { AsyncHandler } from "../../utils/asyncHandler.js";
 import { CustomError } from "../../utils/custom.Error.js";
 import prisma from "../../core/prisma/client.js";
+import {CartUI} from "./cart.ui.js"
 
 export class CartController {
 
@@ -49,19 +50,27 @@ static calculateTotals = (cartItems, pincode) => {
 
     
  
-// 2. Getting cart items (for both logged in and guest users)
-    static getCartItems = AsyncHandler(async (req, res) => {
+static getCartItems = AsyncHandler(async (req, res) => {
         const userId = req.user?.id;
-        const { guestItems = [], pincode } = req.body || {};
-        if(!pincode){
-            throw new CustomError(400, "Pincode is required to calculate shipping");
-        }
+        
+        const payload = Object.keys(req.body || {}).length > 0 ? req.body : req.query;
+        const guestItems = payload.guestItems ? JSON.parse(payload.guestItems) : [];
+        const pincode = payload.pincode || "302001";
 
-        let cartItems = userId? await CartRepository.getCartItems(userId) 
-        : await CartRepository.getGuestCartItems(guestItems||[]);
+        let cartItems = userId 
+        ? await CartRepository.getCartItems(userId) 
+        : await CartRepository.getGuestCartItems(guestItems);
 
         const totals = CartController.calculateTotals(cartItems, pincode);
-        return res.status(200).json(new ApiResponse(200, {cartItems, totals}, "Cart items fetched successfully"));
+        const cartUi = CartUI.buildCartPage(cartItems, totals);
+
+        // FIX: Calculate the actual sum of all quantities, not just the number of rows
+        const totalQuantity = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
+
+        return res.status(200).json({ 
+            ui: cartUi, 
+            meta: { cartCount: totalQuantity } // Global interceptor now gets the true total!
+        });
     });
 
 

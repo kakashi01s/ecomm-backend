@@ -88,7 +88,7 @@ app.use(extractSduiContext);
 // ============================================================================
 app.use("/api/auth", authRoutes);
 app.use("/api/s3", s3Routes);
-app.use("/api/admin/product", productRoutes);
+app.use("/api/product", productRoutes);
 app.use("/api/v1/categories", categoryRoutes);
 console.log("Registering Cart Routes...");
 app.use("/api/cart", cartRoutes);

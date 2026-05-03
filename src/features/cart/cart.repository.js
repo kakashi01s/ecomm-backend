@@ -38,7 +38,12 @@ export class CartRepository {
                 userId: parseInt(userId)
             },
             include: {
-                product: true 
+                product: {
+                    include : {
+                        images: true,   // <--- FIX: Eagerly load product images
+                        category: true  // <--- FIX: Eagerly load the category for the subtitle
+                    }
+                } 
             }
         });
     }

@@ -103,10 +103,11 @@ export const stac = {
     type: "text", data: text, style, textAlign, maxLines, overflow 
   }),
 
-  image: ({ src, imageType = "network", color, width, height, fit = "cover" }) => ({
+image: ({ src, imageType = "network", color, width, height, fit = "cover", errorWidget }) => ({
     type: "image", 
     imageType: imageType, 
-    src, color, width, height, fit 
+    src, color, width, height, fit,
+    errorWidget // <-- ADD THIS
   }),
 
   icon: ({ icon, color, size }) => ({
@@ -213,9 +214,24 @@ export const stac = {
     length, initialIndex, child
   }),
 
-  bottomNavigationBar: ({ items, backgroundColor, selectedItemColor, unselectedItemColor }) => ({
+bottomNavigationBar: ({ 
+    items, 
+    backgroundColor, 
+    selectedItemColor, 
+    unselectedItemColor,
+    elevation = 0, // Default to 0 so we can use a custom shadow
+    type = "fixed", // "fixed" looks much better than "shifting"
+    showSelectedLabels = true,
+    showUnselectedLabels = false // Hide inactive text for a cleaner look
+  }) => ({
     type: "bottomNavigationBar",
-    backgroundColor, selectedItemColor, unselectedItemColor,
+    backgroundColor, 
+    selectedItemColor, 
+    unselectedItemColor,
+    elevation,
+    bottomNavigationBarType: type, 
+    showSelectedLabels,
+    showUnselectedLabels,
     items: items || []
   }),
 
@@ -256,6 +272,39 @@ export const stac = {
   svg: ({ src, isNetwork = false, color, width, height, rotationDegrees = 0 }) => ({
     type: "svg_asset",
     src, isNetwork, color, width, height, rotationDegrees
+  }),
+
+  // ─────────────────────────────────────────────────────────────────
+  // badge
+  //
+  // Overlays a small pill counter on top of any child widget.
+  //
+  // count        — integer. Badge is hidden when count === 0.
+  // color        — badge background (defaults to Brand red / error)
+  // textColor    — badge label color (defaults to white)
+  // size         — diameter of the badge circle (default 16)
+  // position     — { top, right, bottom, left } offsets inside the stack
+  //                Defaults to top-right corner: { top: 0, right: 0 }
+  //
+  // Flutter renderer: wraps child in a Stack + Positioned badge container.
+  // The badge is intentionally clipped slightly outside the icon bounds
+  // for the standard iOS/Android badge look.
+  // ─────────────────────────────────────────────────────────────────
+  badge: ({
+    child,
+    count = 0,
+    color = "#D32F2F",
+    textColor = "#FFFFFF",
+    size = 16,
+    position = { top: 0, right: 0 },
+  }) => ({
+    type: "badge",
+    count,
+    color,
+    textColor,
+    size,
+    position,
+    child,
   }),
 
   video: ({ src, autoPlay = true, loop = true, muted = true, showControls = false, width, height, fit = "cover" }) => ({

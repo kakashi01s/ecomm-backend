@@ -6,6 +6,7 @@ import { AuthRepository } from "./auth.repository.js";
 import { stac } from "../../core/sdui/StacWidgets.js";
 import { DashboardController } from "../app/dashboard/dashboard.controller.js";
 import { AuthUI } from "./auth.ui.js"; 
+import prisma from "../../core/prisma/client.js"; // <-- Added Prisma import
 
 export class AuthController {
 
@@ -14,8 +15,41 @@ export class AuthController {
     const theme = { primaryColor: "#FF5722", scaffoldBackgroundColor: "#F5F5F5" };
 
     try {
+      // 1. Get your initial UI
       const dashboardUi = await DashboardController.getDashboardUiPayload(user);
-      return res.json({ theme, ui: dashboardUi });
+
+      // 2. Fetch the initial counts if the user exists
+      let cartCount = 0;
+      let wishlistCount = 0;
+
+      if (user) {
+        const [cartTotal, wishlistTotal] = await Promise.all([
+          prisma.cartItem.aggregate({
+            where: { userId: user.id },
+            _sum: { quantity: true },
+          }),
+          prisma.wishlist.count({
+            where: { userId: user.id },
+          }),
+        ]).catch((error) => {
+          console.error("[AUTH] Error fetching cart/wishlist counts:", error.message);
+          return [{ _sum: { quantity: 0 } }, 0];
+        });
+
+        cartCount     = cartTotal?._sum?.quantity ?? 0;
+        wishlistCount = wishlistTotal ?? 0;
+      }
+
+      // 3. Return the payload with the 'meta' object alongside 'ui' and 'theme'
+      return res.json({ 
+        theme, 
+        ui: dashboardUi, 
+        meta: { 
+          cartCount: cartCount, 
+          wishlistCount: wishlistCount 
+        } 
+      });
+
     } catch (err) {
       console.error("Bootstrap Error:", err);
       return res.status(500).json({ message: "Error loading app" });
@@ -55,14 +89,22 @@ export class AuthController {
         if (step === "verify_password") {
           const tokens = await AuthService.verifyPassword(email, password);
           return res.status(200).json({
-              nextAction: stac.manageSession("save", tokens, stac.navigate("/dashboard", "replace"))
+              nextAction: stac.manageSession("save", tokens, {
+          actionType: "server_navigate",
+          action: "seamless_replace", 
+          url: "/dashboard" 
+        })
           });
         }
 
         if (step === "verify_otp") {
           const tokens = await AuthService.verifyOtp(email, otp);
           return res.status(200).json({
-              nextAction: stac.manageSession("save", tokens, stac.navigate("/dashboard", "replace"))
+              nextAction: stac.manageSession("save", tokens, {
+          actionType: "server_navigate",
+          action: "seamless_replace", 
+          url: "/dashboard" 
+        })
           });
         }
 
@@ -125,26 +167,24 @@ export class AuthController {
     try {
       const userId = req.user?.id;
       if (userId) {
+        // This will crash if the user was deleted via the seed script
         await AuthRepository.updateRefreshToken(userId, null);
       }
-
-      return res.status(200).json({
-        success: true,
-        nextAction: stac.manageSession(
-          "clear", 
-          null, 
-          stac.navigate("/auth/bootstrap", "replace")
-        )
-      });
     } catch (err) {
-      return res.status(500).json({
-        nextAction: stac.manageSession(
-          "clear", 
-          null, 
-          stac.navigate("/auth/bootstrap", "replace")
-        )
-      });
+      // Catch the crash silently so the server doesn't throw a 500 error!
+      console.log("[AUTH] Logout DB cleanup skipped (user likely already deleted).");
     }
+
+    // ALWAYS return 200 OK. This guarantees the Flutter app receives a success 
+    // status and flawlessly executes the local session wipe and navigation.
+    return res.status(200).json({
+      success: true,
+      nextAction: stac.manageSession(
+        "clear", 
+        null, 
+        stac.navigate("/auth/bootstrap", "replaceAll")
+      )
+    });
   }
 
   // Get current user info
