@@ -323,4 +323,32 @@ bottomNavigationBar: ({
     borderRadius,
     items: items || []
   }),
+  popThen: (nextAction) => ({
+  actionType: "server_navigate",
+  action: "pop",
+  nextAction,  // <-- you'll need to handle this in NavigationActionParser
+  }),
+  keyboardAvoiding: ({ child }) => ({
+  type: "keyboardAvoiding",
+  child,
+}),
+showBottomSheet: (widget, { isScrollControlled = true } = {}) => ({ 
+  actionType: "showModalBottomSheet", 
+  widget,
+  isScrollControlled,
+}),
+wishlistHeart: ({ productId, isWishlisted, action }) => ({
+  type: "wishlist_heart",
+  productId,
+  isWishlisted, // seeds initial state
+  action,
+}),
+cartQtyButton: ({ productId, initialQty = 0, addAction, incrementAction, decrementAction }) => ({
+  type: "cart_qty_button",
+  productId,
+  initialQty,
+  addAction,
+  incrementAction,
+  decrementAction,
+}),
 };

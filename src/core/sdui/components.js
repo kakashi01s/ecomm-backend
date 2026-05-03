@@ -133,11 +133,12 @@ export const ui = {
   // ─── PRODUCT CARD ────────────────────────────────────────────────
 
 // ─── PREMIUM PRODUCT CARD ──────────────────────────────────────────
-  productCard: ({ 
+productCard: ({ 
     id, title, subtitle = "AURORA SILVER", price, originalPrice = null, 
     images = [], isOnSale = false, isWishlisted = false, 
-    rating = "4.8", reviewCount = 120, onCardTap, onAddToCartTap, onWishlistTap,
-    heroTag = `product_image_${id}`,
+    rating = "4.8", reviewCount = 120, initialQty = 0, 
+    onCardTap, onAddToCartTap, onWishlistTap, onIncrementTap, onDecrementTap, 
+    heroTag = `product_image_${Math.random().toString(36).substring(7)}_${id}`,
   }) => {
     
     // 1. Cleanly parse the array (handles both raw strings and {url, mediaType} objects)
@@ -223,17 +224,15 @@ export const ui = {
                   ] : []),
 
                   // WISHLIST BUTTON
-                  stac.positioned({
-                    top: 8, right: 8,
-                    child: stac.inkWell({
-                      action: onWishlistTap,
-                      child: stac.container({
-                        padding: [6, 6, 6, 6],
-                        decoration: { color: "#FFFFFFE6", shape: "circle" },
-                        child: stac.svg({ src: AppIcons.HEART, color: isWishlisted ? Brand.error : Brand.textSecondary, width: 18, height: 18 })
-                      })
-                    })
-                  })
+                stac.positioned({
+                  top: 8, right: 8,
+                  child: {
+                    type: "wishlist_heart",
+                    productId: parseInt(id),
+                    isWishlisted: isWishlisted,
+                    action: onWishlistTap,
+                  }
+                })
                 ],
               }),
             }),
@@ -294,14 +293,14 @@ export const ui = {
                           ]
                         })
                       }),
-                      stac.inkWell({
-                        action: onAddToCartTap,
-                        child: stac.container({
-                          padding: [8, 8, 8, 8],
-                          decoration: { color: Brand.textPrimary, shape: "circle" },
-                          child: stac.svg({ src: AppIcons.PLUS, color: Brand.surface, width: 14, height: 14 }),
-                        }),
-                      }),
+                        {
+                      type: "cart_qty_button",
+                      productId: parseInt(id),
+                      initialQty: initialQty ?? 0,
+                      addAction: onAddToCartTap,
+                      incrementAction: onIncrementTap,
+                      decrementAction: onDecrementTap,
+                    }
                     ],
                   }),
                 ],
@@ -413,7 +412,7 @@ export const ui = {
         mainAxisAlignment: "center",
         crossAxisAlignment: "center",
         children: [
-          stac.icon({ icon, color: Brand.divider, size: 100 }),
+          stac.svg({src: icon, color: Brand.divider, size: 100 }),
           stac.sizedBox({ height: 24 }),
           stac.text(title, {
             style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary }),

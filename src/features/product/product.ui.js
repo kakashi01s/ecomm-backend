@@ -358,8 +358,9 @@ static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
    * `isWishlisted` is derived from product.wishlistCount > 0 so the
    * heart fills immediately without a round-trip on first render.
    */
-  static _bottomBar(product, isGuest) {
-    const isWishlisted = !isGuest && (product.wishlistCount ?? 0) > 0;
+static _bottomBar(product, isGuest) {
+    // Use the injected value from the controller
+    const isWishlisted = product.isWishlisted ?? false;
 
     const addToCartAction = isGuest
       ? stac.showBottomSheet(
@@ -394,8 +395,6 @@ static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
           url: `/cart/add`,
           method: "POST",
           body: { productId: product.id, quantity: 1 },
-          // CartState.incrementCart() is called by the parser on success.
-          // The AppBar badge updates instantly. No page navigation needed.
           onSuccess: stac.showToast("Added to cart! 🛒"),
         });
 
@@ -408,47 +407,53 @@ static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
       child: stac.row({
         children: [
 
-          // Wishlist icon button — filled heart when already saved
-          stac.inkWell({
-            action: stac.apiRequest({
-              url: `/product/${product.id}/wishlist`,
-              method: "POST",
-              // CartState.incrementWishlist/decrementWishlist called by parser.
-              onSuccess: stac.showToast(
-                isWishlisted ? "Removed from wishlist" : "Saved to wishlist ♡"
-              ),
-            }),
-            child: stac.container({
-              width: 50,
-              height: 50,
-              decoration: {
-                color: isWishlisted ? "#FFF0EE" : Brand.surface,
-                borderRadius: Brand.radiusMedium,
-                border: {
-                  color: isWishlisted ? Brand.error : Brand.divider,
-                  width: 1.5,
-                },
-              },
-              child: stac.center({
-                child: stac.svg({
-                  src: AppIcons.HEART,
-                  color: isWishlisted ? Brand.error : Brand.textPrimary,
-                  width: 22,
-                  height: 22,
-                }),
-              }),
-            }),
-          }),
+          // Native custom parser — shares memory state instantly with Dashboard
+          {
+            type: "wishlist_heart",
+            productId: parseInt(product.id),
+            isWishlisted: isWishlisted,
+            action: isGuest 
+              // Reusing your auth bottom sheet trigger here
+              ? stac.showBottomSheet(
+                  stac.card({
+                    margin: 0, elevation: 0, color: Brand.surface, shape: { borderRadius: 24 },
+                    child: stac.padding({
+                      left: 24, top: 24, right: 24, bottom: 48,
+                      child: stac.column({
+                        mainAxisSize: "min", crossAxisAlignment: "stretch",
+                        children: [
+                          stac.container({ width: 40, height: 4, decoration: { color: Brand.divider, borderRadius: 2 } }),
+                          stac.sizedBox({ height: 16 }),
+                          stac.text("Sign in to continue", { style: stac.textStyle({ fontSize: 18, fontWeight: "bold", color: Brand.textPrimary }) }),
+                          stac.sizedBox({ height: 8 }),
+                          stac.text("Create an account or sign in to save items to your wishlist.", { style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
+                          stac.sizedBox({ height: 24 }),
+                          w.button({ text: "Sign In / Register", action: stac.navigate("/auth") }),
+                        ]
+                      })
+                    })
+                  })
+                )
+              : stac.apiRequest({ 
+                  url: `/wishlist/toggle`, 
+                  method: "POST", 
+                  body: { productId: product.id } 
+                })
+          },
 
           stac.sizedBox({ width: 12 }),
 
           // Add to Cart — takes remaining width
-          stac.expanded({
-            child: w.button({
-              text: "Add to Cart",
-              action: addToCartAction,
-              icon: AppIcons.CART,
-            }),
+            stac.expanded({
+            child: {
+              type: "cart_qty_button",
+              productId: parseInt(product.id),
+              initialQty: product.cartQty ?? 0, // Now this has the REAL database value!
+              isFullWidth: true,
+              addAction: addToCartAction,
+              incrementAction: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: product.id, action: "increment", pincode: "302001" } }),
+              decrementAction: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: product.id, action: "decrement", pincode: "302001" } })
+            }
           }),
         ],
       }),

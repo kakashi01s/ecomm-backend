@@ -89,7 +89,7 @@ export class ProductController {
    * The optional ?raw=true query param returns the raw JSON product object
    * for admin panels or debugging without building UI.
    */
-  static async getProductById(req, res) {
+    static async getProductById(req, res) {
     try {
       const { id } = req.params;
 
@@ -99,48 +99,38 @@ export class ProductController {
 
       const product = await ProductRepository.getProductById(id);
 
-      if (!product) {
-        return res.status(404).json(new ApiResponse(404, {}, "Product not found"));
-      }
-
-      // ?raw=true → skip UI build, return plain data (useful for admin / internal tools)
-      if (req.query.raw === "true") {
-        return res.status(200).json(new ApiResponse(200, product, "Product retrieved successfully"));
-      }
+      if (!product) return res.status(404).json(new ApiResponse(404, {}, "Product not found"));
+      if (req.query.raw === "true") return res.status(200).json(new ApiResponse(200, product, "Product retrieved successfully"));
 
       const isGuest = !req.user;
 
-      // ── Seed CartState via _meta ───────────────────────────────────
-      // The Flutter parser intercepts GET /product/:id responses and reads
-      // ui._meta.cartCount / ui._meta.wishlistCount to initialise CartState
-      // on first render. This is a one-time seed — all subsequent updates
-      // happen client-side via CartState increment/decrement, with zero
-      // page navigation.
       let cartCount = 0;
       let wishlistCount = 0;
+      let isProductWishlisted = false; // <-- Tracks specific product status
+      let productCartQty = 0;          // <-- Tracks specific product quantity
 
       if (!isGuest) {
-        const [cartTotal, wishlistTotal] = await Promise.all([
-          prisma.cartItem.aggregate({
-            where: { userId: req.user.id },
-            _sum: { quantity: true },
-          }),
-          prisma.wishlist.count({
-            where: { userId: req.user.id },
-          }),
-        ]).catch(() => [{ _sum: { quantity: 0 } }, 0]);
+        // Run all 4 queries concurrently to get the absolute truth
+        const [cartTotal, wishlistTotal, userWishlist, userCartItem] = await Promise.all([
+          prisma.cartItem.aggregate({ where: { userId: req.user.id }, _sum: { quantity: true } }),
+          prisma.wishlist.count({ where: { userId: req.user.id } }),
+          prisma.wishlist.findFirst({ where: { userId: req.user.id, productId: parseInt(id) } }),
+          prisma.cartItem.findFirst({ where: { userId: req.user.id, productId: parseInt(id) } }) // <-- The missing query!
+        ]).catch(() => [{ _sum: { quantity: 0 } }, 0, null, null]);
 
-        cartCount     = cartTotal?._sum?.quantity ?? 0;
-        wishlistCount = wishlistTotal ?? 0;
+        cartCount           = cartTotal?._sum?.quantity ?? 0;
+        wishlistCount       = wishlistTotal ?? 0;
+        isProductWishlisted = !!userWishlist;
+        productCartQty      = userCartItem?.quantity ?? 0;
       }
+
+      // Inject the true values into the product object for the UI builder
+      product.isWishlisted = isProductWishlisted;
+      product.cartQty      = productCartQty;
 
       const productUi = ProductUI.buildProductPage(product, isGuest);
 
-     
-return res.json({ 
-  ui: productUi, 
-  meta: { cartCount, wishlistCount } 
-});
+      return res.json({ ui: productUi, meta: { cartCount, wishlistCount } });
     } catch (err) {
       res.status(500).json(new ApiResponse(500, {}, err.message || "Error retrieving product"));
     }

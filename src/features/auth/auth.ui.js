@@ -163,7 +163,8 @@ export class AuthUI {
   }
 
   static asBottomSheet(formWidget) {
-    return stac.card({
+    return stac.keyboardAvoiding({
+    child: stac.card({
       margin: 0,
       elevation: 0,
       color: Brand.surface,
@@ -184,8 +185,9 @@ export class AuthUI {
             ],
           }),
         }),
-      }),
-    });
+        }),
+        }),
+  });
   }
 
   static asDialog(formWidget) {
@@ -222,8 +224,8 @@ export class AuthUI {
     }
 
     if (displayType === "bottomSheet") {
-      return stac.showBottomSheet(AuthUI.asBottomSheet(form));
-    }
+  return stac.showBottomSheet(AuthUI.asBottomSheet(form), { isScrollControlled: true });
+}
     if (displayType === "dialog") {
       return stac.showDialog(AuthUI.asDialog(form));
     }

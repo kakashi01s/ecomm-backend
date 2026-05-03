@@ -61,9 +61,24 @@ export class DashboardController {
     }
   }
 
-  static async getDashboardUiPayload(user) {
+static async getDashboardUiPayload(user) {
     const { products, categories, banners } = await DashboardController.getCachedBackgroundData();
-    // Hand over the data to the new UI Builder
-    return DashboardUI.buildDashboardUi(user, products, categories, banners);
+
+    // ── THE FIX: Fetch user-specific data OUTSIDE the generic cache ──
+    const userCartMap = {};
+    const userWishlistSet = new Set();
+
+    if (user) {
+      const [cartItems, wishlists] = await Promise.all([
+        prisma.cartItem.findMany({ where: { userId: user.id } }),
+        prisma.wishlist.findMany({ where: { userId: user.id } })
+      ]).catch(() => [[], []]);
+
+      cartItems.forEach(c => { userCartMap[c.productId] = c.quantity; });
+      wishlists.forEach(w => { userWishlistSet.add(w.productId); });
+    }
+
+    // Pass the truth maps down to the UI builder
+    return DashboardUI.buildDashboardUi(user, products, categories, banners, userCartMap, userWishlistSet);
   }
 }

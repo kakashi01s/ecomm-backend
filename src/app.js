@@ -22,6 +22,8 @@ import { router as dashBoardRoutes } from "./features/app/dashboard/dashboard.ro
 
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
+import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
+
 
 import { AuthController } from "./features/auth/auth.controller.js";
 import { redisManager } from './config/redisClient.js';
@@ -93,6 +95,8 @@ app.use("/api/v1/categories", categoryRoutes);
 console.log("Registering Cart Routes...");
 app.use("/api/cart", cartRoutes);
 app.use("/api/dashboard", dashBoardRoutes); // Protected route with optional auth for SDUI context
+app.use("/api/wishlist", wishlistRoutes);  // toggle, remove, move-to-cart
+app.use("/wishlist", wishlistRoutes); 
 
 // ============================================================================
 // 7. ERROR HANDLING & HEALTH CHECKS

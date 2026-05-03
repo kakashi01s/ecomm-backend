@@ -6,12 +6,11 @@ import { AppIcons } from "../../../core/constants/icons.js";
 
 export class DashboardUI {
   
-  static buildDashboardUi(user, products, categories, banners) {
+static buildDashboardUi(user, products, categories, banners, userCartMap, userWishlistSet) { // <-- ADDED PARAMS
     const isGuest = !user;
 
-    const horizontalCards = DashboardUI._productCards(products, isGuest, user, "horizontal");
-    const gridCards       = DashboardUI._productCards(products, isGuest, user, "grid");
-
+    const horizontalCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "horizontal");
+    const gridCards       = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "grid");
     const horizontalCardItems = horizontalCards.map((card) =>
       stac.padding({
         right: 14,
@@ -32,7 +31,8 @@ export class DashboardUI {
         drawer:          DashboardUI._drawer(isGuest, user),
         body: {
           type: "hideOnScroll",
-          body: stac.customScrollView({
+          body : stac.form({
+            child: stac.customScrollView({
             slivers: [
               // ── APP BAR (Now uses the Single Source of Truth!) ──
               ui.dynamicAppBar({
@@ -144,6 +144,7 @@ export class DashboardUI {
               }),
             ],
           }),
+          }),
           bottomNav: DashboardUI._bottomNav()
         }
       }),
@@ -247,35 +248,40 @@ export class DashboardUI {
     ];
   }
 
-static _productCards(products, isGuest, user, heroContext = "card") {
+static _productCards(products, isGuest, userCartMap, userWishlistSet, heroContext = "card") { // <-- ADDED PARAMS
     return products.map(p => {
-      // FIX: Keep the full object so we know if it's an image or a video!
       const mediaItems = p.images?.length > 0 
         ? p.images.map(img => ({ url: img.url, mediaType: img.mediaType })) 
         : [];
 
-      const isWishlisted = p.wishlistedBy?.some(w => w.userId === user?.id) || false;
-
+      // THE FIX: Look up truth from the isolated dictionaries!
+      const isWishlisted = userWishlistSet.has(p.id);
+      const cartQty = userCartMap[p.id] || 0;
+        
       return ui.productCard({
         id: p.id.toString(), 
         title: p.name, 
         subtitle: p.category?.name?.toUpperCase() || "AURORA EXCLUSIVE", 
         price: `$${p.price}`,
         originalPrice: p.salePrice ? `$${p.originalPrice}` : null,
-        images: mediaItems, // Pass the array of objects now
+        images: mediaItems,
         isOnSale: !!p.salePrice,
+        initialQty: cartQty,
         isWishlisted: isWishlisted, 
         rating: p.averageRating?.toFixed(1) || "4.9",
         reviewCount: p.reviewCount || 42,
         heroTag: `product_image_${p.id}_${heroContext}`,
+        
         onCardTap: stac.navigate(`/product/${p.id}`),
+        
         onWishlistTap: isGuest 
           ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet")))
           : stac.apiRequest({ 
-              url: `/api/user/wishlist/toggle`, 
+              url: `/wishlist/toggle`, 
               method: "POST", 
               body: { productId: p.id } 
             }),
+            
         onAddToCartTap: isGuest 
           ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet"))) 
           : stac.apiRequest({
@@ -283,6 +289,23 @@ static _productCards(products, isGuest, user, heroContext = "card") {
               method: "POST",
               body: { productId: p.id, quantity: 1 },
               onSuccess: stac.showToast("Added to cart! 🛒"),
+            }),
+
+        // --- NEW: Add the Increment & Decrement actions ---
+        onIncrementTap: isGuest
+          ? null
+          : stac.apiRequest({
+              url: `/cart/update`, // <-- Adjust if your route differs
+              method: "PUT",       // <-- Adjust if your route differs (PUT/PATCH/POST)
+              body: { productId: p.id, action: "increment", pincode: "302001" },
+            }),
+            
+        onDecrementTap: isGuest
+          ? null
+          : stac.apiRequest({
+              url: `/cart/update`, // <-- Adjust if your route differs
+              method: "PUT",
+              body: { productId: p.id, action: "decrement", pincode: "302001" },
             })
       });
     });
@@ -290,16 +313,8 @@ static _productCards(products, isGuest, user, heroContext = "card") {
 
   static _actionIcons(isGuest, user) {
     return [
-      {
-        icon: AppIcons.CART,
-        action: stac.navigate("/cart"),
-        badgeType: "cart",
-      },
-      {
-        icon: AppIcons.HEART,
-        action: stac.navigate("/wishlist"),
-        badgeType: "wishlist",
-      },
+      { icon: AppIcons.CART,  action: stac.navigate("/cart"),     badgeType: "cart" },
+      { icon: AppIcons.HEART, action: stac.navigate("/wishlist"), badgeType: "wishlist" },
       stac.responsiveVisibility({
         hiddenWhen: ["MOBILE", "TABLET"],
         child: stac.row({
@@ -314,7 +329,7 @@ static _productCards(products, isGuest, user, heroContext = "card") {
                 })
               : w.iconButton({
                   icon: AppIcons.PERSON,
-                  action: stac.navigate("/profile"),
+                  action: stac.popThen(stac.navigate("/profile")) ,
                   color: Brand.primary,
                 }),
           ],
@@ -324,17 +339,19 @@ static _productCards(products, isGuest, user, heroContext = "card") {
   }
 
 static _drawer(isGuest, user) {
-    const navItems = [
-      { icon: AppIcons.HOME,   label: "Home",     action: stac.navigate("/dashboard", "replace") },
-      { icon: AppIcons.CART,   label: "My Cart",  action: stac.navigate("/cart") },
-      { icon: AppIcons.HEART,  label: "Wishlist", action: stac.navigate("/wishlist") },
-      {
-        icon: AppIcons.PERSON,
-        label: "Profile",
-        action: isGuest ? stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("dialog"))) : stac.navigate("/profile"),
-      },
-      { icon: AppIcons.SETTING, label: "Settings", action: stac.navigate("/settings") },
-    ];
+const navItems = [
+        { icon: AppIcons.HOME,   label: "Home",     action: stac.popThen(stac.navigate("/dashboard", "replace")) },
+        { icon: AppIcons.CART,   label: "My Cart",  action: stac.popThen(stac.navigate("/cart")) },
+        { icon: AppIcons.HEART,  label: "Wishlist", action: stac.popThen(stac.navigate("/wishlist")) },
+        {
+          icon: AppIcons.PERSON,
+          label: "Profile",
+          action: isGuest 
+            ? stac.popThen(stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("bottomSheet")))) 
+            : stac.popThen(stac.navigate("/profile")),
+        },
+        { icon: AppIcons.SETTING, label: "Settings", action: stac.popThen(stac.navigate("/settings")) },
+      ];
 
     return {
       type: "drawer",
@@ -391,7 +408,7 @@ static _drawer(isGuest, user) {
                 child: isGuest 
                   ? w.button({
                       text: "Sign In / Register",
-                      action: stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("dialog"))),
+                      action: stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("bottomSheet"))),
                     })
                   : w.button({
                       text: "Logout",
