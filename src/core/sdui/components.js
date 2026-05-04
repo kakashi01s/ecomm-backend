@@ -23,11 +23,80 @@ export const Brand = {
 };
 
 // ==========================================
-// 2. PAGE-LEVEL COMPONENTS
-// These compose w.* primitives into full layout blocks.
-// Don't add raw stac.button / stac.textField here — always go through w.
+// 2. SHARED PRIMITIVES
+// Low-level, reused across all UI modules.
+// ==========================================
+
+/**
+ * _productImage — shared image widget used on product cards AND cart items.
+ * Always ClipRRect-wrapped so corners are respected inside any parent.
+ * errorWidget shows a graceful placeholder instead of a broken image icon.
+ */
+const _productImage = ({ url, width, height, borderRadius = Brand.radiusSmall }) =>
+  stac.clipRRect({
+    borderRadius,
+    child: stac.image({
+      src: url || "https://via.placeholder.com/400x500",
+      width,
+      height,
+      fit: "cover",
+      errorWidget: stac.container({
+        width,
+        height,
+        color: "#F5F5F5",
+        child: stac.center({
+          child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 24 }),
+        }),
+      }),
+    }),
+  });
+
+/**
+ * _cartQtyButton — canonical cart quantity button (native parser).
+ * Used in product cards, product page bottom bar, and cart items.
+ * Always backed by the same ProductState so qty is in-sync everywhere.
+ */
+const _cartQtyButton = ({
+  productId,
+  initialQty = 0,
+  isFullWidth = false,
+  addAction,
+  incrementAction,
+  decrementAction,
+  loadingColor = "#FFFFFF",
+}) => ({
+  type: "cart_qty_button",
+  productId: parseInt(productId),
+  initialQty,
+  isFullWidth,
+  addAction,
+  incrementAction,
+  decrementAction,
+  loadingColor,
+});
+
+/**
+ * _wishlistHeart — canonical wishlist toggle (native parser).
+ * Used in product cards and product page bottom bar.
+ */
+const _wishlistHeart = ({ productId, isWishlisted, action }) => ({
+  type: "wishlist_heart",
+  productId: parseInt(productId),
+  isWishlisted,
+  action,
+});
+
+// ==========================================
+// 3. PAGE-LEVEL COMPONENTS
+// These compose w.* primitives and _shared* into full layout blocks.
 // ==========================================
 export const ui = {
+
+  // ─── EXPOSE SHARED PRIMITIVES ────────────────────────────────────
+  // So cart.ui.js and product_ui.js can import them from one place.
+  productImage: _productImage,
+  cartQtyButton: _cartQtyButton,
+  wishlistHeart: _wishlistHeart,
 
   // ─── BUTTONS (delegate to w) ─────────────────────────────────────
   primaryButton: ({ text, action, isDestructive = false, isFullWidth = true }) =>
@@ -38,8 +107,7 @@ export const ui = {
       fullWidth: isFullWidth,
     }),
 
-  secondaryButton: ({ text, action }) =>
-    w.button({ text, action, variant: "secondary" }),
+  secondaryButton: ({ text, action }) => w.button({ text, action, variant: "secondary" }),
 
   // ─── SEARCH BAR (delegate to w) ──────────────────────────────────
   searchBar: (props) => w.searchBar(props),
@@ -64,25 +132,19 @@ export const ui = {
       }),
     }),
 
-    // ─── CATEGORY ROUND CARD ─────────────────────────────────────────
+  // ─── CATEGORY ROUND CARD ─────────────────────────────────────────
   categoryCard: ({ title, imageUrl = null, isSelected = false, action }) => {
-    // 1. Build the image or fallback icon
     const mediaWidget = imageUrl
       ? stac.clipRRect({
-          borderRadius: 32, // 32 is half of 64, making a perfect circle
-          child: stac.image({
-            src: imageUrl,
-            width: 64,
-            height: 64,
-            fit: "cover",
-          }),
+          borderRadius: 32,
+          child: stac.image({ src: imageUrl, width: 64, height: 64, fit: "cover" }),
         })
       : stac.container({
           width: 64,
           height: 64,
           decoration: {
             color: isSelected ? Brand.primary : "#EEEEEE",
-            borderRadius: 32, // Circular fallback
+            borderRadius: 32,
           },
           child: stac.center({
             child: stac.icon({
@@ -93,9 +155,8 @@ export const ui = {
           }),
         });
 
-    // 2. Add an optional selection ring
     const ringedImage = stac.container({
-      padding: [2, 2, 2, 2], // Space between image and ring
+      padding: [2, 2, 2, 2],
       decoration: {
         borderRadius: 34,
         border: isSelected ? { color: Brand.primary, width: 2 } : null,
@@ -103,7 +164,6 @@ export const ui = {
       child: mediaWidget,
     });
 
-    // 3. Assemble the vertical card layout
     return stac.inkWell({
       action,
       child: stac.column({
@@ -113,7 +173,7 @@ export const ui = {
           ringedImage,
           stac.sizedBox({ height: 8 }),
           stac.sizedBox({
-            width: 72, // Constrain text width
+            width: 72,
             child: stac.text(title, {
               maxLines: 1,
               overflow: "ellipsis",
@@ -131,176 +191,373 @@ export const ui = {
   },
 
   // ─── PRODUCT CARD ────────────────────────────────────────────────
-
-// ─── PREMIUM PRODUCT CARD ──────────────────────────────────────────
-productCard: ({ 
-    id, title, subtitle = "AURORA SILVER", price, originalPrice = null, 
-    images = [], isOnSale = false, isWishlisted = false, 
-    rating = "4.8", reviewCount = 120, initialQty = 0, 
-    onCardTap, onAddToCartTap, onWishlistTap, onIncrementTap, onDecrementTap, 
-    heroTag = `product_image_${Math.random().toString(36).substring(7)}_${id}`,
+  // Overflow-safe: image section uses AspectRatio, not Expanded.
+  // Text section is constrained so nothing escapes the card bounds.
+  // The cart_qty_button is rendered via the native parser (local state).
+  productCard: ({
+    id,
+    title,
+    subtitle = "",
+    price,
+    originalPrice = null,
+    images = [],
+    isOnSale = false,
+    isWishlisted = false,
+    rating = "4.8",
+    reviewCount = 0,
+    initialQty = 0,
+    onCardTap,
+    onAddToCartTap,
+    onWishlistTap,
+    onIncrementTap,
+    onDecrementTap,
+    heroTag = `product_image_${id}`,
   }) => {
-    
-    // 1. Cleanly parse the array (handles both raw strings and {url, mediaType} objects)
-    const mediaArray = Array.isArray(images) && images.length > 0 
-      ? images 
-      : [{ url: "https://via.placeholder.com/400x500", mediaType: "image" }];
+    // 1. Resolve media
+    const mediaArray =
+      Array.isArray(images) && images.length > 0
+        ? images
+        : [{ url: "https://via.placeholder.com/400x500", mediaType: "image" }];
 
-    // 2. Fallback widget for broken images
-    const fallbackImage = stac.container({
-      color: "#F5F5F5",
-      child: stac.center({ child: stac.icon({ icon: "image_not_supported", color: "#999999", size: 32 }) })
-    });
-
-    // 3. Find if this product has a video anywhere in its media array
-    const videoItem = mediaArray.find(m => {
+    const videoItem = mediaArray.find((m) => {
       const type = m.mediaType || "";
       const url = typeof m === "string" ? m : m.url;
       return type === "video" || (typeof url === "string" && url.endsWith(".mp4"));
     });
 
     const hasVideo = !!videoItem;
-    // If there's a video, feature it! Otherwise, use the first image.
     const primaryMedia = hasVideo ? videoItem : mediaArray[0];
-    const mediaUrl = typeof primaryMedia === "string" ? primaryMedia : primaryMedia.url;
+    const mediaUrl =
+      typeof primaryMedia === "string" ? primaryMedia : primaryMedia.url;
 
-    // 4. THE FIX: Directly use YOUR video component. No carousels!
-    const mediaWidget = hasVideo
-      ? stac.video({ 
-          src: mediaUrl, 
-          autoPlay: true, 
-          loop: true, 
-          muted: true, 
-          showControls: false, 
-          fit: "cover" 
+    // 2. Build media widget (video or hero-wrapped image)
+    const rawMediaWidget = hasVideo
+      ? stac.video({
+          src: mediaUrl,
+          autoPlay: true,
+          loop: true,
+          muted: true,
+          showControls: false,
+          fit: "cover",
         })
-      : stac.image({ 
-          src: mediaUrl, 
-          fit: "cover", 
-          errorWidget: fallbackImage 
-        });
-
-    // 5. Wrap in Hero ONLY if it's an image. (Hero + Video = Crash in Flutter)
-    const heroWrappedMedia = hasVideo 
-      ? mediaWidget 
-      : stac.hero({ tag: heroTag, child: mediaWidget });
-
-    return stac.inkWell({
-      action: onCardTap,
-      child: stac.container({
-        decoration: {
-          color: Brand.surface,
-          borderRadius: Brand.radiusMedium,
-          border: { color: Brand.divider, width: 1 },
-        },
-        child: stac.column({
-          crossAxisAlignment: "stretch",
-          children: [
-            
-            // =========================
-            // MEDIA STACK
-            // =========================
-            stac.expanded({
-              child: stac.stack({
-                children: [
-                  stac.positioned({
-                    top: 0, bottom: 0, left: 0, right: 0,
-                    child: stac.clipRRect({
-                      borderRadius: { topLeft: Brand.radiusMedium, topRight: Brand.radiusMedium, bottomLeft: 0, bottomRight: 0 },
-                      child: heroWrappedMedia, // Uses the safe, hero-stripped video widget!
-                    }),
-                  }),
-                  
-                  // SALE BADGE
-                  ...(isOnSale ? [
-                    stac.positioned({
-                      top: 10, left: 10,
-                      child: stac.container({
-                        padding: [8, 4, 8, 4],
-                        decoration: { color: Brand.textPrimary, borderRadius: 12 },
-                        child: stac.text("SALE", { style: stac.textStyle({ color: Brand.surface, fontSize: 10, fontWeight: "bold", letterSpacing: 1.0 }) }),
-                      }),
-                    }),
-                  ] : []),
-
-                  // WISHLIST BUTTON
-                stac.positioned({
-                  top: 8, right: 8,
-                  child: {
-                    type: "wishlist_heart",
-                    productId: parseInt(id),
-                    isWishlisted: isWishlisted,
-                    action: onWishlistTap,
-                  }
-                })
-                ],
+      : stac.hero({
+          tag: heroTag,
+          child: stac.image({
+            src: mediaUrl,
+            fit: "cover",
+            errorWidget: stac.container({
+              color: "#F5F5F5",
+              child: stac.center({
+                child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 28 }),
               }),
             }),
+          }),
+        });
 
-            // =========================
-            // TEXT DETAILS
-            // =========================
-            stac.padding({
-              all: 12,
+    // 3. Image section — fixed height so overflow is predictable in every
+    //    context (horizontal scroll, 2-col grid, 4-col grid). AspectRatio
+    //    was width-dependent: wider grid cells → taller image → details overflow.
+    const imageSection = stac.sizedBox({
+      height: 175,
+      child: stac.stack({
+        children: [
+          // Full-bleed media
+          stac.positioned({
+            top: 0, bottom: 0, left: 0, right: 0,
+            child: stac.clipRRect({
+              borderRadius: {
+                topLeft: Brand.radiusMedium,
+                topRight: Brand.radiusMedium,
+                bottomLeft: 0,
+                bottomRight: 0,
+              },
+              child: rawMediaWidget,
+            }),
+          }),
+
+          // SALE badge
+          ...(isOnSale
+            ? [
+                stac.positioned({
+                  top: 8,
+                  left: 8,
+                  child: stac.container({
+                    padding: [8, 4, 8, 4],
+                    decoration: { color: Brand.error, borderRadius: 10 },
+                    child: stac.text("SALE", {
+                      style: stac.textStyle({
+                        color: "#FFFFFF",
+                        fontSize: 9,
+                        fontWeight: "bold",
+                        letterSpacing: 0.8,
+                      }),
+                    }),
+                  }),
+                }),
+              ]
+            : []),
+
+          // Wishlist button (native parser — syncs with product page)
+          stac.positioned({
+            top: 6,
+            right: 6,
+            child: _wishlistHeart({
+              productId: id,
+              isWishlisted,
+              action: onWishlistTap,
+            }),
+          }),
+        ],
+      }),
+    });
+
+    // 4. Text + cart section
+const detailsSection = stac.expanded({
+  child: stac.padding({
+    left: 10,
+    right: 10,
+    top: 8,
+    bottom: 12, // Provides breathing room to prevent edge-touching overflows
+    child: stac.column({
+      crossAxisAlignment: "start",
+      mainAxisAlignment: "spaceBetween", // Pushes title group UP and price group DOWN
+      children: [
+        // TOP GROUP: Subtitle and Title
+        stac.column({
+          crossAxisAlignment: "start",
+          mainAxisSize: "min",
+          children: [
+            // Subtitle + rating row
+            stac.row({
+              mainAxisAlignment: "spaceBetween",
+              crossAxisAlignment: "center",
+              children: [
+                stac.expanded({
+                  child: stac.text(subtitle, {
+                    maxLines: 1,
+                    overflow: "ellipsis",
+                    style: stac.textStyle({
+                      fontSize: 9,
+                      color: Brand.textSecondary,
+                      fontWeight: "bold",
+                      letterSpacing: 0.5,
+                    }),
+                  }),
+                }),
+                ...(reviewCount > 0
+                  ? [
+                      stac.row({
+                        mainAxisSize: "min",
+                        children: [
+                          stac.svg({ src: AppIcons.STAR, color: "#FFC107", width: 10, height: 10 }),
+                          stac.sizedBox({ width: 2 }),
+                          stac.text(`${rating}`, {
+                            style: stac.textStyle({ fontSize: 9, color: Brand.textSecondary }),
+                          }),
+                        ],
+                      }),
+                    ]
+                  : []),
+              ],
+            }),
+
+            stac.sizedBox({ height: 4 }),
+
+            // Product title — max 2 lines
+            stac.text(title, {
+              maxLines: 2,
+              overflow: "ellipsis",
+              style: stac.textStyle({
+                fontSize: 13,
+                fontWeight: "w500",
+                color: Brand.textPrimary,
+                height: 1.2,
+              }),
+            }),
+          ],
+        }),
+
+        // BOTTOM GROUP: Price + add-to-cart row
+        stac.row({
+          mainAxisAlignment: "spaceBetween",
+          crossAxisAlignment: "center",
+          children: [
+            // Price column
+            stac.expanded({
               child: stac.column({
                 crossAxisAlignment: "start",
                 mainAxisSize: "min",
                 children: [
+                
+                  ...(originalPrice
+                    ? [
+                        stac.text(originalPrice, {
+                          maxLines: 1,
+                          overflow: "ellipsis",
+                          style: stac.textStyle({
+                            fontSize: 10,
+                            color: Brand.textSecondary,
+                            decoration: "lineThrough",
+                          }),
+                        }),
+                        stac.sizedBox({ height: 2 }),
+                      ]
+                    : []),
+                  stac.text(price, {
+                    maxLines: 1,
+                    overflow: "ellipsis",
+                    style: stac.textStyle({
+                      fontSize: 14,
+                      fontWeight: "w700",
+                      color: Brand.textPrimary,
+                    }),
+                  }),
+                ],
+              }),
+            }),
+
+            stac.sizedBox({ width: 4 }),
+
+            // Native Quantity Button
+            _cartQtyButton({
+              productId: id,
+              initialQty,
+              isFullWidth: false,
+              addAction: onAddToCartTap,
+              incrementAction: onIncrementTap,
+              decrementAction: onDecrementTap,
+            }),
+          ],
+        }),
+      ],
+    }),
+  }),
+});
+
+    return stac.inkWell({
+      action: onCardTap,
+      child: stac.container({
+        clipBehavior: "antiAlias",
+        decoration: {
+          color: Brand.surface,
+          borderRadius: Brand.radiusMedium,
+          border: { color: Brand.divider, width: 1 },
+          boxShadow: [
+            {
+              color: "#0000000A",
+              blurRadius: 8,
+              spreadRadius: 0,
+              offset: { dx: 0, dy: 2 },
+            },
+          ],
+        },
+        child: stac.column({
+          crossAxisAlignment: "stretch",
+          mainAxisSize: "max",
+          children: [imageSection, detailsSection],
+        }),
+      }),
+    });
+  },
+
+  // ─── CART ITEM ───────────────────────────────────────────────────
+  // Now uses _productImage (shared) and _cartQtyButton (native parser).
+  // Qty updates are instant via ProductState — no page reload needed.
+  // The page still navigates replace (for totals), but the button
+  // itself reacts immediately via local state before the reload completes.
+  cartItem: ({
+    productId,
+    title,
+    subtitle,
+    price,
+    imageUrl,
+    initialQty = 1,
+    onIncrement,
+    onDecrement,
+  }) =>
+    stac.container({
+      margin: [0, 0, 0, 12],
+      decoration: {
+        color: Brand.surface,
+        borderRadius: Brand.radiusMedium,
+        border: { color: Brand.divider, width: 1 },
+        boxShadow: [
+          { color: "#0000000A", blurRadius: 6, spreadRadius: 0, offset: { dx: 0, dy: 2 } },
+        ],
+      },
+      child: stac.padding({
+        all: 12,
+        child: stac.row({
+          crossAxisAlignment: "start",
+          children: [
+            // Product thumbnail — uses shared _productImage
+            _productImage({
+              url: imageUrl,
+              width: 88,
+              height: 88,
+              borderRadius: Brand.radiusSmall,
+            }),
+
+            stac.sizedBox({ width: 12 }),
+
+            // Info column
+            stac.expanded({
+              child: stac.column({
+                crossAxisAlignment: "start",
+                mainAxisSize: "min",
+                children: [
+                  // Subtitle (category)
+                  stac.text(subtitle || "", {
+                    maxLines: 1,
+                    overflow: "ellipsis",
+                    style: stac.textStyle({
+                      fontSize: 10,
+                      color: Brand.textSecondary,
+                      fontWeight: "bold",
+                      letterSpacing: 0.4,
+                    }),
+                  }),
+
+                  stac.sizedBox({ height: 3 }),
+
+                  // Product name
+                  stac.text(title || "Unknown Product", {
+                    maxLines: 2,
+                    overflow: "ellipsis",
+                    style: stac.textStyle({
+                      fontSize: 14,
+                      fontWeight: "w600",
+                      color: Brand.textPrimary,
+                      height: 1.25,
+                    }),
+                  }),
+
+                  stac.sizedBox({ height: 8 }),
+
+                  // Price + qty row
                   stac.row({
                     mainAxisAlignment: "spaceBetween",
+                    crossAxisAlignment: "center",
                     children: [
-                      stac.expanded({
-                        child: stac.text(subtitle, {
-                          maxLines: 1, overflow: "ellipsis",
-                          style: stac.textStyle({ fontSize: 10, color: Brand.textSecondary, fontWeight: "bold", letterSpacing: 0.5 })
+                      stac.text(price, {
+                        style: stac.textStyle({
+                          fontSize: 15,
+                          fontWeight: "bold",
+                          color: Brand.primary,
                         }),
                       }),
-                      stac.sizedBox({ width: 4 }),
-                      ...(reviewCount > 0 ? [
-                        stac.row({
-                          mainAxisSize: "min", 
-                          children: [
-                            stac.svg({ src: AppIcons.STAR, color: "#FFC107", width: 12, height: 12 }),
-                            stac.sizedBox({ width: 4 }),
-                            stac.text(`${rating} (${reviewCount})`, { style: stac.textStyle({ fontSize: 10, color: Brand.textSecondary }) })
-                          ]
-                        })
-                      ] : [])
-                    ]
-                  }),
-                  stac.sizedBox({ height: 6 }),
-                  stac.text(title, {
-                    maxLines: 2, overflow: "ellipsis",
-                    style: stac.textStyle({ fontSize: 14, fontWeight: "w500", color: Brand.textPrimary, height: 1.2 }),
-                  }),
-                  stac.sizedBox({ height: 12 }),
-                  stac.row({
-                    mainAxisAlignment: "spaceBetween",
-                    crossAxisAlignment: "end", 
-                    children: [
-                      stac.expanded({
-                        child: stac.column({
-                          crossAxisAlignment: "start",
-                          children: [
-                            ...(originalPrice ? [
-                              stac.text(originalPrice, { style: stac.textStyle({ fontSize: 12, color: Brand.textSecondary }) }),
-                              stac.sizedBox({ height: 2 }),
-                            ] : []),
-                            stac.text(price, {
-                              maxLines: 1, overflow: "ellipsis",
-                              style: stac.textStyle({ fontSize: 16, fontWeight: "w600", color: Brand.textPrimary }),
-                            }),
-                          ]
-                        })
+
+                      // ── NATIVE QTY BUTTON ──────────────────────────
+                      // Reuses the exact same widget as product card and
+                      // product page. ProductState keeps them all in sync.
+                      _cartQtyButton({
+                        productId,
+                        initialQty,
+                        isFullWidth: false,
+                        addAction: onIncrement,    // qty was 0 → "add" (shouldn't happen in cart, but safe)
+                        incrementAction: onIncrement,
+                        decrementAction: onDecrement,
                       }),
-                        {
-                      type: "cart_qty_button",
-                      productId: parseInt(id),
-                      initialQty: initialQty ?? 0,
-                      addAction: onAddToCartTap,
-                      incrementAction: onIncrementTap,
-                      decrementAction: onDecrementTap,
-                    }
                     ],
                   }),
                 ],
@@ -308,58 +565,6 @@ productCard: ({
             }),
           ],
         }),
-      }),
-    });
-  },
-  // ─── CART ITEM ───────────────────────────────────────────────────
-  cartItem: ({ title, subtitle, price, imageUrl, quantity, onIncrement, onDecrement }) =>
-    stac.container({
-      padding: 12,
-      margin: [0, 0, 0, 12],
-      decoration: { color: Brand.surface, borderRadius: Brand.radiusMedium },
-      child: stac.row({
-        children: [
-          stac.clipRRect({
-            borderRadius: Brand.radiusSmall,
-            child: stac.image({ src: imageUrl, width: 80, height: 80, fit: "cover" }),
-          }),
-          stac.sizedBox({ width: 16 }),
-          stac.expanded({
-            child: stac.column({
-              crossAxisAlignment: "start",
-              children: [
-                stac.text(title, {
-                  style: stac.textStyle({ fontSize: 16, fontWeight: "bold", color: Brand.textPrimary }),
-                }),
-                stac.text(subtitle, {
-                  style: stac.textStyle({ fontSize: 12, color: Brand.textSecondary }),
-                }),
-                stac.sizedBox({ height: 8 }),
-                stac.text(price, {
-                  style: stac.textStyle({ fontSize: 16, fontWeight: "bold", color: Brand.primary }),
-                }),
-              ],
-            }),
-          }),
-          stac.container({
-            decoration: { border: { color: Brand.divider, width: 1 }, borderRadius: 20 },
-            child: stac.row({
-              children: [
-                stac.inkWell({
-                  action: onDecrement,
-                  child: stac.padding({ all: 8, child: stac.icon({ icon: "remove", size: 16 }) }),
-                }),
-                stac.text(quantity.toString(), {
-                  style: stac.textStyle({ fontWeight: "bold" }),
-                }),
-                stac.inkWell({
-                  action: onIncrement,
-                  child: stac.padding({ all: 8, child: stac.icon({ icon: "add", size: 16 }) }),
-                }),
-              ],
-            }),
-          }),
-        ],
       }),
     }),
 
@@ -373,14 +578,14 @@ productCard: ({
           stac.text(label, {
             style: stac.textStyle({
               color: isTotal ? Brand.textPrimary : Brand.textSecondary,
-              fontSize: isTotal ? 18 : 14,
+              fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? "bold" : "normal",
             }),
           }),
           stac.text(value, {
             style: stac.textStyle({
               color: isTotal ? Brand.primary : Brand.textPrimary,
-              fontSize: isTotal ? 18 : 14,
+              fontSize: isTotal ? 16 : 14,
               fontWeight: isTotal ? "bold" : "w500",
             }),
           }),
@@ -412,7 +617,7 @@ productCard: ({
         mainAxisAlignment: "center",
         crossAxisAlignment: "center",
         children: [
-          stac.svg({src: icon, color: Brand.divider, size: 100 }),
+          stac.svg({ src: icon, color: Brand.divider, size: 100 }),
           stac.sizedBox({ height: 24 }),
           stac.text(title, {
             style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary }),
@@ -434,38 +639,25 @@ productCard: ({
     }),
 
   // ─── DYNAMIC APP BAR ─────────────────────────────────────────────
-  //
-  // Action descriptors now support a `badgeType` field:
-  //   "cart"     → emits { type: "cart_badge_icon" }   (reactive, reads CartState)
-  //   "wishlist" → emits { type: "wishlist_badge_icon" } (reactive, reads CartState)
-  //   omitted    → plain icon button (no badge)
-  //
-  // The Flutter side renders these as native ListenableBuilder widgets that
-  // update ONLY the badge pill — zero page navigation on count change.
-  //
-// ─── DYNAMIC APP BAR ─────────────────────────────────────────────
-// ─── DYNAMIC APP BAR ─────────────────────────────────────────────
   dynamicAppBar: ({
-    titleText, 
+    titleText,
     isDashboard = false,
     showSearch = false,
-    showLogo = false, // <-- Explicit conditional toggle for the logo
+    showLogo = false,
     isSliver = false,
+    pinned = false,
     actions = [],
   }) => {
-    
-    // Determine what goes in the center/left of the app bar
     let titleWidget;
-    
+
     if (showSearch) {
       titleWidget = w.searchBar({ hintText: "Search products...", isReadOnly: true });
     } else if (showLogo || (isDashboard && !titleText)) {
-      // Unwrapped the image from the Row for perfect vertical centering
       titleWidget = stac.image({
         src: "assets/images/app_icon_hor.png",
         imageType: "asset",
-        height: 24, // Standardized logo height
-        fit: "contain"
+        height: 24,
+        fit: "contain",
       });
     } else {
       titleWidget = stac.text(titleText || "", {
@@ -477,29 +669,13 @@ productCard: ({
       if (item && typeof item === "object" && !item.type && item.icon !== undefined) {
         const { icon, action, badgeType = null, color = null, size = 22, padding = 8 } = item;
 
-        // Reactive badge types
         if (badgeType === "cart") {
-          return {
-            type: "cart_badge_icon",
-            icon,
-            action,
-            color: color ?? Brand.textPrimary,
-            size,
-            padding,
-          };
+          return { type: "cart_badge_icon", icon, action, color: color ?? Brand.textPrimary, size, padding };
         }
         if (badgeType === "wishlist") {
-          return {
-            type: "wishlist_badge_icon",
-            icon,
-            action,
-            color: color ?? Brand.textPrimary,
-            size,
-            padding,
-          };
+          return { type: "wishlist_badge_icon", icon, action, color: color ?? Brand.textPrimary, size, padding };
         }
 
-        // Plain icon — no badge
         return w.iconButton({ icon, action, color, size, padding });
       }
       return item;
@@ -508,9 +684,9 @@ productCard: ({
     const appBarProps = {
       title: titleWidget,
       backgroundColor: Brand.surface,
-      centerTitle: !showSearch && !showLogo && !isDashboard, // Center text titles only
+      centerTitle: !showSearch && !showLogo && !isDashboard,
       elevation: 0,
-      toolbarHeight: 56, // <-- The Single Source of Truth for perfectly identical heights
+      toolbarHeight: 56,
       actions: resolvedActions,
     };
 
@@ -523,8 +699,45 @@ productCard: ({
     }
 
     if (isSliver) {
-      return stac.sliverAppBar({ ...appBarProps, floating: true, pinned: false });
+      return stac.sliverAppBar({ ...appBarProps, floating: !pinned, pinned });
     }
     return stac.appBar(appBarProps);
   },
-}
+
+mediaCarousel: ({ items = [], height = 400, borderRadius = 0, showDots = true, autoPlay = true, viewportFraction = 1.0 }) => {
+    
+    // यह आपका Backend-Driven Error Widget है
+    const defaultErrorWidget = {
+      type: "container",
+      color: "#F0F0F0",
+      alignment: "center", // यह overflow को रोकेगा और Icon को बीच में रखेगा
+      child: {
+        type: "icon",
+        icon: "image_not_supported", 
+        color: "#CCCCCC",
+        size: 32
+      }
+    };
+
+    return {
+      type: "carousel", 
+      height: height,
+      borderRadius: borderRadius,
+      showDots: showDots,
+      autoPlayIntervalSeconds: autoPlay ? 4 : 0,
+      viewportFraction: viewportFraction,
+      items: (items || []).map((media) => {
+        const url = media.url || media.mediaUrl || media.src || "";
+        const type = media.mediaType || (url.endsWith(".mp4") ? "video" : "image");
+        
+        return {
+          mediaUrl: url,
+          mediaType: type,
+          thumbnail: media.thumbnail || media.imageUrl || null,
+          linkUrl: media.linkUrl || null,
+          errorWidget: defaultErrorWidget
+        };
+      })
+    };
+  },
+};

@@ -1,7 +1,8 @@
 import { WishlistService } from "./wishlist.service.js";
 import { WishlistUI } from "./wishlist.ui.js";
 import { stac } from "../../core/sdui/StacWidgets.js";
-import prisma from "../../core/prisma/client.js"; // <-- ADD THIS LINE
+import prisma from "../../core/prisma/client.js";
+
 export class WishlistController {
 
   static async getGlobalCounts(userId) {
@@ -21,13 +22,17 @@ export class WishlistController {
     try {
       const userId = req.user.id;
       const items = await WishlistService.getWishlist(userId);
-      return res.json({ ui: WishlistUI.buildWishlistScreen(items) });
+      
+      // Include global counts so the appbar badges sync on page load
+      const meta = await WishlistController.getGlobalCounts(userId);
+      
+      return res.json({ ui: WishlistUI.buildWishlistScreen(items), meta });
     } catch (err) {
       return res.status(500).json({ message: "Failed to load wishlist", error: err.message });
     }
   }
 
-  // POST /api/user/wishlist/toggle — used by product cards
+  // POST /api/user/wishlist/toggle — used by product cards and product page heart
   static async toggleWishlist(req, res) {
     try {
       const userId = req.user.id;
@@ -36,6 +41,11 @@ export class WishlistController {
 
       const result = await WishlistService.toggle(userId, Number(productId));
       const meta = await WishlistController.getGlobalCounts(userId);
+
+      meta.updatedWishlistStatus = {
+        productId: parseInt(productId),
+        isWishlisted: result.wishlisted, // ← WishlistRepository.toggle returns { wishlisted: bool }
+      };
 
       return res.json({ data: result, meta });
     } catch (err) {
@@ -53,6 +63,12 @@ export class WishlistController {
       await WishlistService.remove(userId, Number(productId));
       const meta = await WishlistController.getGlobalCounts(userId);
 
+      // Mark the product as un-wishlisted so any open product page reacts
+      meta.updatedWishlistStatus = {
+        productId: parseInt(productId),
+        isWishlisted: false,
+      };
+
       return res.json({ success: true, meta });
     } catch (err) {
       return res.status(500).json({ message: "Failed to remove from wishlist", error: err.message });
@@ -60,7 +76,7 @@ export class WishlistController {
   }
 
   // POST /api/user/wishlist/move-to-cart
-    static async moveToCart(req, res) {
+  static async moveToCart(req, res) {
     try {
       const userId = req.user.id;
       const { productId } = req.body;
@@ -69,8 +85,10 @@ export class WishlistController {
       await WishlistService.moveToCart(userId, Number(productId));
       
       const meta = await WishlistController.getGlobalCounts(userId);
-      // ── The Silent Healer: Tell Flutter this product now has qty 1 in the cart
+
+      // Product now has qty 1 in cart AND is no longer wishlisted
       meta.updatedProductQty = { productId: parseInt(productId), quantity: 1 };
+      meta.updatedWishlistStatus = { productId: parseInt(productId), isWishlisted: false };
 
       return res.json({ success: true, meta });
     } catch (err) {

@@ -159,8 +159,23 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover", error
   // ==========================================
   // 4. SDUI ACTIONS
   // ==========================================
-  navigate: (url, action = "push", ui = null) => ({ actionType: "server_navigate", url, action, ui }),
-
+navigate: (url, action = "push", ui = null, loadingUi = null) => ({
+    actionType: "server_navigate", 
+    url, 
+    action, 
+    ui,
+    loadingUi: loadingUi || {
+      type: "scaffold",
+      backgroundColor: "#F8F9FA",
+      body: {
+        type: "center",
+        child: { 
+          type: "circularProgressIndicator", 
+          color: "#FF5722" 
+        }
+      }
+    }
+  }),
   manageSession: (sessionAction, tokens, nextAction) => ({
     actionType: "manage_session", sessionAction, accessToken: tokens?.accessToken, refreshToken: tokens?.refreshToken, nextAction
   }),
@@ -208,6 +223,13 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover", error
   inkWell: ({ action, child }) => ({
     type: "inkWell", onTap: action, child
   }),
+  asyncButton: ({ action, loadingColor, child }) => ({
+
+    type: "async_button",
+    action,
+    loadingColor,
+    child
+  }),
 
   defaultBottomNavigationController: ({ length, initialIndex = 0, child }) => ({
     type: "defaultBottomNavigationController",
@@ -250,8 +272,9 @@ bottomNavigationBar: ({
     slivers: slivers || []
   }),
 
-  sliverAppBar: ({ title, backgroundColor, pinned = true, floating = false, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle } = {}) => ({
+  sliverAppBar: ({ title, backgroundColor, pinned = true, floating = false, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle,automaticallyImplyLeading } = {}) => ({
     type: "sliverAppBar",
+    automaticallyImplyLeading,
     title: typeof title === 'string' ? stac.text(title, { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold" }) }) : title,
     backgroundColor, pinned, floating, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle
   }),
@@ -343,12 +366,30 @@ wishlistHeart: ({ productId, isWishlisted, action }) => ({
   isWishlisted, // seeds initial state
   action,
 }),
-cartQtyButton: ({ productId, initialQty = 0, addAction, incrementAction, decrementAction }) => ({
-  type: "cart_qty_button",
-  productId,
-  initialQty,
-  addAction,
-  incrementAction,
-  decrementAction,
-}),
+
+pageView: ({ children, height = 400 }) => ({
+    type: "sizedBox",
+    height: height,
+    child: {
+      type: "custom_page_view",
+      children: children || []
+    }
+  }),
+  popScope: ({ canPop = false, action, child }) => ({
+    type: "popScope",
+    canPop,
+    onPopInvokedAction: action,
+    child
+  }),
+
+  // 2. Add the Action (Under your SDUI ACTIONS section)
+  exitApp: () => ({
+    actionType: "exit_app"
+  }),
+  aspectRatio: ({ aspectRatio, child }) => ({
+    type: "aspectRatio",
+    aspectRatio,
+    child
+  }),
+  spacer: () => ({ type: "spacer" }),
 };

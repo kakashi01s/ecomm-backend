@@ -141,35 +141,25 @@ export class ProductUI {
   // ─────────────────────────────────────────────────────────────────
 
   /** Sliver with image carousel and floating back + wishlist buttons */
-static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
-    const imageWidget = mediaItems.length > 1
-      ? {
-          type: "carousel",
-          height: 420,
-          autoPlayIntervalSeconds: 0,
-          borderRadius: 0,
-          items: mediaItems.map((media) => ({
-            mediaUrl: media.url,
-            mediaType: media.mediaType ?? (media.url.endsWith(".mp4") ? "video" : "image"),
-            linkUrl: null,
-          })),
-        }
-      : (mainImg.mediaType === "video" || mainImg.url.endsWith(".mp4")
-          ? stac.video({ src: mainImg.url, autoPlay: true, loop: true, muted: true, fit: "cover" })
-          : stac.image({ src: mainImg.url, fit: "cover", width: "infinity", height: 420 }));
-          
+/** Sliver with image carousel and floating back + wishlist buttons */
+  static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
+    
     return stac.sliverToBoxAdapter({
       child: stac.sizedBox({
         height: 420,
         child: stac.stack({
           children: [
-
             // Full bleed image / carousel
             stac.positioned({
               top: 0, bottom: 0, left: 0, right: 0,
-              child: imageWidget,
+             child: ui.mediaCarousel({
+              items: mediaItems.length > 0 ? mediaItems : [mainImg],
+              height: 420,
+              borderRadius: 0,
+              showDots: true,
+              autoPlay: false // Usually false for product detail pages
             }),
-
+            }),
 
             // Sale badge
             ...(hasDiscount
@@ -198,7 +188,6 @@ static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
       }),
     });
   }
-
   /** Category badge + star rating in one row */
   static _topMeta(product) {
     return stac.row({

@@ -11,12 +11,16 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
 
     const horizontalCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "horizontal");
     const gridCards       = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "grid");
-    const horizontalCardItems = horizontalCards.map((card) =>
-      stac.padding({
-        right: 14,
-        child: stac.sizedBox({ width: 158, height: 258, child: card }),
-      })
-    );
+const horizontalCardItems = horizontalCards.map((card) =>
+  stac.padding({
+    right: 14,
+    child: stac.sizedBox({ 
+      width: 200, 
+      height: 300, // 175px fixed image + ~105px details + 20px breathing room
+      child: card 
+    }),
+  })
+);
 
     const searchWidget = {
       type: "nativeSearchOverlay",
@@ -24,7 +28,59 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
       apiEndpoint: "/dashboard/search/suggestions",
     };
 
-    return stac.defaultBottomNavigationController({
+return stac.popScope({
+      canPop: false, // Prevents the app from closing immediately
+      action: stac.showDialog(
+        // The Dialog to show when the back button is pressed
+          stac.center({
+          child: stac.card({
+            margin: 40,
+            color: Brand.surface,
+            shape: { borderRadius: Brand.radiusLarge },
+            child: stac.padding({
+              all: 24,
+              child: stac.column({
+                mainAxisSize: "min", // This also helps keep it small
+                crossAxisAlignment: "center",
+                children: [
+                  stac.icon({ icon: "exit_to_app", size: 48, color: Brand.primary }),
+                  stac.sizedBox({ height: 16 }),
+                  stac.text("Exit App?", {
+                    style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary })
+                  }),
+                  stac.sizedBox({ height: 8 }),
+                  stac.text("Are you sure you want to close the application?", {
+                    textAlign: "center",
+                    style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary })
+                  }),
+                  stac.sizedBox({ height: 24 }),
+                  stac.row({
+                    children: [
+                      stac.expanded({
+                        child: w.button({
+                          text: "Stay",
+                          variant: "outline",
+                          action: stac.navigate(null, "pop")
+                        })
+                      }),
+                      stac.sizedBox({ width: 12 }),
+                      stac.expanded({
+                        child: w.button({
+                          text: "Exit",
+                          variant: "primary",
+                          action: stac.exitApp() 
+                        })
+                      }),
+                    ]
+                  })
+                ]
+              })
+            })
+          })
+        }) // <-- Closes stac.center
+      ),
+      // Your existing dashboard layout becomes the child
+      child: stac.defaultBottomNavigationController({
       length: 4,
       child: stac.scaffold({
         backgroundColor: Brand.background,
@@ -35,16 +91,29 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
             child: stac.customScrollView({
             slivers: [
               // ── APP BAR (Now uses the Single Source of Truth!) ──
-              ui.dynamicAppBar({
+             ui.dynamicAppBar({
                 isDashboard: true,
                 isSliver: true,
+                pinned: true, // <-- Locks it to the top
                 actions: DashboardUI._actionIcons(isGuest, user),
               }),
 
-              stac.sliverToBoxAdapter({
-                child: stac.padding({
-                  left: 16, right: 16, top: 8, bottom: 20,
-                  child: searchWidget,
+              stac.sliverAppBar({
+                pinned: true,       // Makes it stick to the ceiling
+                floating: false,     // Pulls it down immediately when scrolling up
+                automaticallyImplyLeading: false, // Hides the back/drawer button
+                backgroundColor: Brand.surface, // Matches the app background
+                elevation: 0,
+                titleSpacing: 0, // Removes Flutter's default AppBar margins
+                title: stac.padding({
+                  left: 16, right: 16, bottom: 12, top: 4,
+                  // This is YOUR widget. It will act exactly as it did before, 
+                  // but now it has sticky scroll physics!
+                  child: {
+                    type: "nativeSearchOverlay",
+                    hintText: "Search rings, necklaces...",
+                    apiEndpoint: "/dashboard/search/suggestions",
+                  },
                 }),
               }),
 
@@ -111,15 +180,15 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
                   child: stac.padding({
                     top:0, left: 16, right: 16, bottom: 100, 
                     child: stac.gridView({
-                      padding: { top:0, left:0, right:0, bottom:0 },
-                      crossAxisCount:  2,
-                      childAspectRatio: 0.65,
-                      mainAxisSpacing:  14,
-                      crossAxisSpacing: 14,
-                      shrinkWrap: true,
-                      physics: "never",
-                      children: gridCards,
-                    }),
+                    padding: { top: 0, left: 0, right: 0, bottom: 0 },
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.68, // 172px wide ÷ ~297px tall — matches 175px fixed image + details
+                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 14,
+                    shrinkWrap: true,
+                    physics: "never",
+                    children: gridCards,
+                  }),
                   }),
                 }),
               }),
@@ -131,7 +200,7 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
                     left: 16, right: 16, bottom: 100, 
                     child: stac.gridView({
                       crossAxisCount:  4,
-                      childAspectRatio: 0.70,
+                      childAspectRatio: 0.62,
                       mainAxisSpacing:  16,
                       crossAxisSpacing: 16,
                       padding: { top:0, left:0, right:0, bottom:0 },
@@ -147,10 +216,10 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
           }),
           bottomNav: DashboardUI._bottomNav()
         }
-      }),
-    });
+      }), // Closes scaffold
+      }), // Closes defaultBottomNavigationController
+    }); // <-- THE MISSING BRACKET: Closes popScope!
   }
-
   // ─────────────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
@@ -163,17 +232,64 @@ static buildDashboardUi(user, products, categories, banners, userCartMap, userWi
     }));
   }
 
-  static _mobileCarousel(banners) {
-    return stac.responsiveVisibility({
-      hiddenWhen: ["DESKTOP", "4K"],
-      child: {
-        type: "carousel",
+static _mobileCarousel(banners) {
+  return stac.responsiveVisibility({
+    hiddenWhen: ["DESKTOP", "4K"],
+    child: stac.padding({
+      left: 16, right: 16,
+      child: ui.mediaCarousel({
+        items: banners, // Ensure this matches the expected array structure
         height: 220,
-        autoPlayIntervalSeconds: 4,
         borderRadius: 15,
-        items: DashboardUI._bannerItems(banners),
-        viewportFraction: 0.98
-      },
+        showDots: true
+      }),
+    }),
+  });
+}
+
+  static _desktopCarousel(banners) {
+    const items = DashboardUI._bannerItems(banners);
+    const rightBanners = items.slice(0, 2).map((b, i) =>
+      stac.expanded({
+        child: stac.padding({
+          top: i === 1 ? 12 : 0,
+          child: stac.clipRRect({
+            borderRadius: 16,
+            child: stac.inkWell({
+              action: b.linkUrl ? stac.navigate(b.linkUrl) : null,
+              child: stac.image({ src: b.mediaUrl, fit: "cover" }),
+            }),
+          }),
+        }),
+      })
+    );
+
+    return stac.responsiveVisibility({
+      hiddenWhen: ["MOBILE", "TABLET"],
+      child: stac.sizedBox({
+        height: 220,
+        child: stac.row({
+          children: [
+            stac.expanded({
+              flex: 3,
+              // USE THE NEW WIDGET HERE TOO
+              child: ui.mediaCarousel({
+                items,
+                height: 220,
+                borderRadius: 20,
+              }),
+            }),
+            stac.sizedBox({ width: 12 }),
+            stac.expanded({
+              flex: 2,
+              child: stac.column({
+                crossAxisAlignment: "stretch",
+                children: rightBanners,
+              }),
+            }),
+          ],
+        }),
+      }),
     });
   }
 

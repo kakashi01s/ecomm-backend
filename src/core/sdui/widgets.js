@@ -87,8 +87,9 @@ export const w = {
           })
         : label;
 
-    const buttonBody = stac.inkWell({
+const buttonBody = stac.asyncButton({
       action,
+      loadingColor: c.fg, // The spinner will perfectly match the text color!
       child: stac.container({
         height: 50,
         width: fullWidth ? "infinity" : null,
