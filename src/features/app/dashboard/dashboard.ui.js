@@ -16,7 +16,7 @@ const horizontalCardItems = horizontalCards.map((card) =>
     right: 14,
     child: stac.sizedBox({ 
       width: 200, 
-      height: 300, // 175px fixed image + ~105px details + 20px breathing room
+      height: 300, 
       child: card 
     }),
   })
@@ -77,7 +77,7 @@ return stac.popScope({
               })
             })
           })
-        }) // <-- Closes stac.center
+        })
       ),
       // Your existing dashboard layout becomes the child
       child: stac.defaultBottomNavigationController({
@@ -99,23 +99,100 @@ return stac.popScope({
               }),
 
               stac.sliverAppBar({
+                
                 pinned: true,       // Makes it stick to the ceiling
-                floating: false,     // Pulls it down immediately when scrolling up
-                automaticallyImplyLeading: false, // Hides the back/drawer button
+                
+              floating: false,     // Pulls it down immediately when scrolling up
+              primary: false,     // <-- ADD THIS: Disables the automatic status-bar padding
+                // toolbarHeight: 52,
+              automaticallyImplyLeading: false, // Hides the back/drawer button
                 backgroundColor: Brand.surface, // Matches the app background
                 elevation: 0,
                 titleSpacing: 0, // Removes Flutter's default AppBar margins
-                title: stac.padding({
-                  left: 16, right: 16, bottom: 12, top: 4,
-                  // This is YOUR widget. It will act exactly as it did before, 
-                  // but now it has sticky scroll physics!
-                  child: {
-                    type: "nativeSearchOverlay",
-                    hintText: "Search rings, necklaces...",
-                    apiEndpoint: "/dashboard/search/suggestions",
-                  },
+                title: ui.nativeSearchOverlay({
+                  apiEndpoint: "/search/suggestions",
+                  onSubmitAction: stac.navigate("/search/results?q={{query}}", "push"),
+
+                  // 1. FULL CONTROL OVER THE SEARCH BAR UI
+                  searchBarUi: w.textField({
+                    id: "dashboard_search",
+                    hint: "Search rings, necklaces...",
+                    decoration: {
+                      hintText: "Search rings, necklaces...",
+                      filled: true,
+                      fillColor: Brand.background,
+                      contentPadding: [16, 0, 16, 0],
+                      // Pass standard STAC widgets for your icons!
+                      prefixIcon: stac.padding({
+                        all: 12,
+                        child: stac.svg({ src: AppIcons.SEARCH, color: Brand.textSecondary, width: 20, height: 20 })
+                      }),
+                      border: { type: "outlineInputBorder", borderRadius: 30, color: Brand.divider },
+                      enabledBorder: { type: "outlineInputBorder", borderRadius: 30, color: Brand.divider },
+                      focusedBorder: { type: "outlineInputBorder", borderRadius: 30, color: Brand.primary },
+                    }
+                  }),
+
+                  // 2. FULL CONTROL OVER THE DROPDOWN UI
+                  suggestionsUi: stac.padding({
+                    all: 12,
+                    child: stac.row({
+                      children: [
+                        // Left Side: Dynamic Image with Fallback Icon
+                        stac.clipRRect({
+                          borderRadius: 8,
+                          child: stac.image({
+                            src: "${_item.imageUrl}", // Dart injects the URL here!
+                            width: 38, 
+                            height: 38,
+                            fit: "cover",
+                            
+                            // If the item is a category (null URL) or a broken image,
+                            // this exact block automatically takes over.
+                            errorWidget: stac.container({
+                              width: 38, 
+                              height: 38,
+                              decoration: { color: Brand.background, borderRadius: 8 },
+                              child: stac.center({
+                                child: stac.icon({ icon: "search", color: Brand.textSecondary, size: 18 })
+                              })
+                            })
+                          })
+                        }),
+                        
+                        stac.sizedBox({ width: 12 }),
+                        
+                        // Center: Title & Subtitle Column
+                        stac.expanded({
+                          child: stac.column({
+                            crossAxisAlignment: "start",
+                            mainAxisSize: "min",
+                            children: [
+                              stac.text("${_item.name}", { 
+                                maxLines: 1, 
+                                overflow: "ellipsis",
+                                style: stac.textStyle({ fontSize: 14, color: Brand.textPrimary, fontWeight: "w500" }) 
+                              }),
+                              stac.sizedBox({ height: 2 }),
+                              stac.text("${_item.subtitle}", { 
+                                maxLines: 1, 
+                                overflow: "ellipsis",
+                                style: stac.textStyle({ fontSize: 11, color: Brand.textSecondary }) 
+                              }),
+                            ]
+                          })
+                        }),
+                        
+                        // Right Side: Trailing Arrow
+                        stac.padding({
+                          right: 4,
+                          child: stac.icon({ icon: "north_west", size: 14, color: "#CCCCCC" })
+                        })
+                      ]
+                    })
+                  })
+                })
                 }),
-              }),
 
               stac.sliverToBoxAdapter({
                 child: stac.padding({

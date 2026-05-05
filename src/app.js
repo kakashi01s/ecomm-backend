@@ -19,6 +19,7 @@ import { router as authRoutes } from "./features/auth/auth.routes.js";
 import { router as s3Routes } from "./features/s3/s3.routes.js";
 import { router as productRoutes } from "./features/product/product.routes.js";
 import { router as dashBoardRoutes } from "./features/app/dashboard/dashboard.routes.js";
+import { router as searchRoutes } from "./features/search/search.routes.js";
 
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
@@ -97,7 +98,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/dashboard", dashBoardRoutes); // Protected route with optional auth for SDUI context
 app.use("/api/wishlist", wishlistRoutes);  // toggle, remove, move-to-cart
 app.use("/wishlist", wishlistRoutes); 
-
+app.use("/api/search", searchRoutes); // Public search routes (no auth required)
 // ============================================================================
 // 7. ERROR HANDLING & HEALTH CHECKS
 // ============================================================================

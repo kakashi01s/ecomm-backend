@@ -50,7 +50,7 @@ export class SearchRepository {
 
     const productItems = products.map((p) => ({
       name: p.name,
-      subtitle: p.category?.name ?? null,
+      subtitle: p.category?.name ?? " ",
       imageUrl: p.images?.[0]?.url ?? null,
       action: {
         actionType: "server_navigate",

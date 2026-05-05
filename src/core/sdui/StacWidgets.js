@@ -137,7 +137,20 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover", error
     validators: validators || [] 
   }),
 
-  textField: ({ id, hintText, labelText, obscureText, keyboardType, prefixIcon, suffixIcon, validators, decoration, autofocus } = {}) => ({
+textField: ({ 
+    id, 
+    hintText, 
+    labelText, 
+    obscureText, 
+    keyboardType, 
+    prefixIcon, 
+    suffixIcon, 
+    validators, 
+    decoration, 
+    autofocus, 
+    onChanged,     // <-- ADD THIS
+    onSubmitted    // <-- ADD THIS
+  } = {}) => ({
     type: "textField",
     id,
     decoration: decoration || {
@@ -149,7 +162,9 @@ image: ({ src, imageType = "network", color, width, height, fit = "cover", error
     obscureText: obscureText || false,
     keyboardType,
     validators: validators || [],
-    autofocus: autofocus || false
+    autofocus: autofocus || false,
+    onChanged,     // <-- PASS TO JSON
+    onSubmitted    // <-- PASS TO JSON
   }),
 
   checkbox: ({ id, title, value = false, activeColor } = {}) => ({
@@ -272,11 +287,35 @@ bottomNavigationBar: ({
     slivers: slivers || []
   }),
 
-  sliverAppBar: ({ title, backgroundColor, pinned = true, floating = false, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle,automaticallyImplyLeading } = {}) => ({
+sliverAppBar: ({ 
+    title, 
+    backgroundColor, 
+    pinned = true, 
+    floating = false, 
+    primary,             // <-- Added primary
+    toolbarHeight,       // <-- Added toolbarHeight
+    expandedHeight, 
+    flexibleSpace, 
+    leading, 
+    actions, 
+    elevation, 
+    centerTitle,
+    automaticallyImplyLeading 
+  } = {}) => ({
     type: "sliverAppBar",
     automaticallyImplyLeading,
     title: typeof title === 'string' ? stac.text(title, { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold" }) }) : title,
-    backgroundColor, pinned, floating, expandedHeight, flexibleSpace, leading, actions, elevation, centerTitle
+    backgroundColor, 
+    pinned, 
+    floating, 
+    primary,             // <-- Passed to JSON
+    toolbarHeight,       // <-- Passed to JSON
+    expandedHeight, 
+    flexibleSpace, 
+    leading, 
+    actions, 
+    elevation, 
+    centerTitle
   }),
 
   flexibleSpaceBar: ({ background, title, centerTitle = false, collapseMode = "parallax" }) => ({

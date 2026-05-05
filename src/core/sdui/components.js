@@ -609,6 +609,18 @@ const detailsSection = stac.expanded({
         }),
       ],
     }),
+    nativeSearchOverlay: ({ 
+    apiEndpoint, 
+    onSubmitAction,
+    searchBarUi,    // <-- Accept the UI template for the input field
+    suggestionsUi   // <-- Accept the UI template for the dropdown items
+  } = {}) => ({
+    type: "nativeSearchOverlay",
+    apiEndpoint,
+    onSubmitAction,
+    searchBarUi, 
+    suggestionsUi,
+  }),
 
   // ─── EMPTY STATE ─────────────────────────────────────────────────
   emptyState: ({ icon, title, subtitle, buttonText, buttonAction }) =>

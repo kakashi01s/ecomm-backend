@@ -239,18 +239,16 @@ const buttonBody = stac.asyncButton({
       });
     }
 
-    // Live variant — used on the search screen
+// Live variant — used on the search screen
     return stac.container({
       height: 46,
       child: stac.textField({
-        id: inputId,
+        id: inputId, // defaults to "search_query"
         autofocus,
+        // The magic happens here: omitting 'body' tells STAC to auto-send the form value!
         onChanged: stac.apiRequest({
-          url: "/dashboard/search/live",
+          url: "/search/live", 
           method: "POST",
-          body: {
-            query: { actionType: "getFormValue", id: inputId },
-          },
         }),
         decoration: {
           hintText,
