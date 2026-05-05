@@ -20,6 +20,7 @@ import { router as s3Routes } from "./features/s3/s3.routes.js";
 import { router as productRoutes } from "./features/product/product.routes.js";
 import { router as dashBoardRoutes } from "./features/app/dashboard/dashboard.routes.js";
 import { router as searchRoutes } from "./features/search/search.routes.js";
+import { router as profileRoutes } from "./features/profile/profile.routes.js";
 
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
@@ -62,11 +63,10 @@ const corsOptions = {
   allowedHeaders: [
     "Content-Type",
     "Authorization",
-    "app",
     "platform",
     "version",
-    "X-Requested-With",
     "Accept",
+    "x-device-type"
   ],
   exposedHeaders: ["Content-Range", "X-Content-Range"],
   optionsSuccessStatus: 200,
@@ -98,6 +98,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/dashboard", dashBoardRoutes); // Protected route with optional auth for SDUI context
 app.use("/api/wishlist", wishlistRoutes);  // toggle, remove, move-to-cart
 app.use("/wishlist", wishlistRoutes); 
+app.use("/api/profile", profileRoutes); // Public profile routes (no auth required)
 app.use("/api/search", searchRoutes); // Public search routes (no auth required)
 // ============================================================================
 // 7. ERROR HANDLING & HEALTH CHECKS

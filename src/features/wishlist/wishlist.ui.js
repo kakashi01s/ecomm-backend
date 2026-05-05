@@ -9,7 +9,7 @@ export class WishlistUI {
 
     return stac.scaffold({
       backgroundColor: Brand.background,
-      appBar: ui.dynamicAppBar({ titleText: "My Wishlist", isSliver: false }),
+      appBar: ui.dynamicAppBar({ titleText: "My Wishlist", isSliver: false, isDashboard: true }),
       body: hasItems
         ? WishlistUI._itemList(items)
         : WishlistUI._emptyState(),

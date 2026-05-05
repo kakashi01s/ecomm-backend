@@ -12,17 +12,18 @@ export class SearchResultsUI {
       backgroundColor: Brand.background,
       
       // 1. App Bar matching Dashboard, but configured as an inner page
-      appBar: ui.dynamicAppBar({
+      appBar: ui.dynamicAppBar(
+        {
         titleText: "Search Results",
         isDashboard: false,
         
         actions: [
-                      { icon: AppIcons.SEARCH, action: stac.navigate("/search"), badgeType: "search" },
-
-          { icon: AppIcons.HEART, action: stac.navigate("/wishlist"), badgeType: "wishlist" },
-          { icon: AppIcons.CART,  action: stac.navigate("/cart"),     badgeType: "cart" },
+        { icon: AppIcons.SEARCH, action: stac.navigate("/search"), badgeType: "search" },
+        { icon: AppIcons.HEART, action: stac.navigate("/wishlist"), badgeType: "wishlist" },
+        { icon: AppIcons.CART,  action: stac.navigate("/cart"),     badgeType: "cart" },
         ],
-      }),
+      }
+    ),
 
       // 2. Body wrapped in stac.form so cart API requests can resolve context
       body: isEmpty

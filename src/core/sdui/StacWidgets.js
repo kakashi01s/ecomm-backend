@@ -29,7 +29,6 @@ export const stac = {
     backgroundColor, elevation, centerTitle, leading, actions
   }),
 
-  safeArea: ({ child }) => ({ type: "safeArea", child }),
 
   singleChildScrollView: ({ child, padding, scrollDirection } = {}) => ({ 
     type: "singleChildScrollView", 
@@ -253,30 +252,68 @@ navigate: (url, action = "push", ui = null, loadingUi = null) => ({
 
 bottomNavigationBar: ({ 
     items, 
+    elevation = 0, 
+    barType = "fixed", // 🚨 "fixed" disables the shifting animation entirely
+    fixedColor,
     backgroundColor, 
+    iconSize,
     selectedItemColor, 
     unselectedItemColor,
-    elevation = 0, // Default to 0 so we can use a custom shadow
-    type = "fixed", // "fixed" looks much better than "shifting"
+    selectedFontSize,
+    unselectedFontSize,
+    selectedLabelStyle,
+    unselectedLabelStyle,
     showSelectedLabels = true,
-    showUnselectedLabels = false // Hide inactive text for a cleaner look
+    showUnselectedLabels = true, // 🚨 Forces unselected labels to stay visible
+    enableFeedback,
+    landscapeLayout
   }) => ({
     type: "bottomNavigationBar",
+    items: items || [],
+    elevation,
+    barType, // STAC maps this to `type` in the Flutter BottomNavigationBar
+    bottomNavigationBarType: barType, // Kept for backwards compatibility with older STAC versions
+    fixedColor,
     backgroundColor, 
+    iconSize,
     selectedItemColor, 
     unselectedItemColor,
-    elevation,
-    bottomNavigationBarType: type, 
+    selectedFontSize,
+    unselectedFontSize,
+    selectedLabelStyle,
+    unselectedLabelStyle,
     showSelectedLabels,
     showUnselectedLabels,
-    items: items || []
+    enableFeedback,
+    landscapeLayout
   }),
-
-  bottomNavigationBarItem: ({ icon, label }) => ({
-    icon: { type: "icon", icon },
-    label
+changeTab: (index) => ({
+    actionType: "change_tab_index",
+    index: index
   }),
-
+  handleDashboardBack: (exitDialogAction) => ({
+    actionType: "handle_dashboard_back",
+    exitDialogAction
+  }),
+  bottomNavigationBarItem: ({ 
+    icon, 
+    activeIcon, 
+    label, 
+    backgroundColor, 
+    tooltip 
+  }) => ({
+    icon: typeof icon === 'string' ? { type: "icon", icon } : icon,
+    activeIcon: activeIcon 
+      ? (typeof activeIcon === 'string' ? { type: "icon", icon: activeIcon } : activeIcon)
+      : undefined,
+    label,
+    backgroundColor,
+    tooltip
+  }),
+bottomNavigationView: ({ children }) => ({
+    type: "bottomNavigationView",
+    children: children || []
+  }),
   showDialog: (widget) => ({ actionType: "showDialog", widget }),
 
   showBottomSheet: (widget) => ({ actionType: "showModalBottomSheet", widget }),
@@ -285,6 +322,8 @@ bottomNavigationBar: ({
     type: "customScrollView",
     physics,
     slivers: slivers || []
+  }),safeArea: ({ top = true, bottom = true, left = true, right = true, child }) => ({ 
+    type: "safeArea", top, bottom, left, right, child 
   }),
 
 sliverAppBar: ({ 

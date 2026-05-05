@@ -659,6 +659,7 @@ const detailsSection = stac.expanded({
     isSliver = false,
     pinned = false,
     actions = [],
+    backAction = null,
   }) => {
     let titleWidget;
 
@@ -702,10 +703,11 @@ const detailsSection = stac.expanded({
       actions: resolvedActions,
     };
 
-    if (!isDashboard) {
+if (!isDashboard) {
       appBarProps.leading = w.iconButton({
         icon: AppIcons.BACK,
-        action: stac.navigate(null, "pop"),
+        // Agar custom backAction diya hai toh wo use karo, warna default pop
+        action: backAction ?? stac.navigate(null, "pop"),
         color: Brand.textPrimary,
       });
     }
