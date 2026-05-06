@@ -127,10 +127,15 @@ export class ProductController {
       // Inject the true values into the product object for the UI builder
       product.isWishlisted = isProductWishlisted;
       product.cartQty      = productCartQty;
+      const activePincode = req.headers['x-pincode'] || req.user?.activePincode || null;
+      const productUi = ProductUI.buildProductPage(product, isGuest, activePincode);
+      
 
-      const productUi = ProductUI.buildProductPage(product, isGuest);
-
-      return res.json({ ui: productUi, meta: { cartCount, wishlistCount } });
+      // Inject activePincode into the meta block
+      return res.json({ 
+        ui: productUi, 
+        meta: { cartCount, wishlistCount, activePincode } 
+      });
     } catch (err) {
       res.status(500).json(new ApiResponse(500, {}, err.message || "Error retrieving product"));
     }

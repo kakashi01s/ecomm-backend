@@ -11,12 +11,12 @@ export class ProductUI {
    *
    * `product` may now carry two optional fields populated by the controller
    * before calling this builder (fetched from cart/wishlist aggregates):
-   *   product.cartCount     — number of items currently in the user's cart
-   *   product.wishlistCount — number of items saved to the user's wishlist
+   * product.cartCount     — number of items currently in the user's cart
+   * product.wishlistCount — number of items saved to the user's wishlist
    *
    * When these fields are present the AppBar action icons display live badges.
    */
-  static buildProductPage(product, isGuest = false) {
+  static buildProductPage(product, isGuest = false, activePincode = null) {
     const mediaItems = product.images?.map((i) => ({ url: i.url, mediaType: i.mediaType })) ?? [];
     const mainImg  = mediaItems.length > 0 ? mediaItems[0] : { url: "https://via.placeholder.com/600x700", mediaType: "image" };
     const price    = `₹${product.price.toFixed(2)}`;
@@ -61,6 +61,7 @@ export class ProductUI {
       // StacFormScope" and silently drops the onSuccess callback — which is
       // why the navigate("replace") never fired and the badge never updated.
       body: stac.form({
+        id: "product_page_form",
         child: stac.customScrollView({
         slivers: [
 
@@ -117,7 +118,8 @@ export class ProductUI {
                           stac.sizedBox({ height: 20 }),
                         ]
                       : []),
-
+                    ProductUI._pincodeSection(product, activePincode),
+                      stac.sizedBox({ height: 24 }),
                     // Delivery & highlights info row
                     ProductUI._highlights(),
                     stac.sizedBox({ height: 32 }),
@@ -139,9 +141,110 @@ export class ProductUI {
   // ─────────────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ─────────────────────────────────────────────────────────────────
+  static _pincodeSection(product, activePincode) {
+    // STATE 1: Pincode is set. Show the ETA and a "Change" button.
+    if (activePincode) {
+      return stac.container({
+        padding: [16, 16, 16, 16],
+        decoration: { color: Brand.surface, borderRadius: Brand.radiusSmall, border: { color: Brand.divider, width: 1 } },
+        child: stac.row({
+          children: [
+            stac.svg({ src: AppIcons.LOCATION || "location_on", color: Brand.primary, width: 24, height: 24 }),
+            stac.sizedBox({ width: 12 }),
+            stac.expanded({
+              child: stac.column({
+                crossAxisAlignment: "start",
+                children: [
+                  stac.text(`Delivering to ${activePincode}`, { style: stac.textStyle({ fontSize: 14, fontWeight: "bold", color: Brand.textPrimary }) }),
+                  stac.sizedBox({ height: 4 }),
+                  // You can make this dynamic based on the pincode later
+                  stac.text("Delivery by Friday, 28 May", { style: stac.textStyle({ fontSize: 12, fontWeight: "w500", color: "#10B981" }) }), 
+                ]
+              })
+            }),
+            stac.inkWell({
+              // Sends null to clear it, then replaces the page
+              action: stac.apiRequest({
+                url: `/utilities/pincode`, 
+                method: "POST",
+                body: { pincode: null },
+                onSuccess: stac.navigate(`/product/${product.id}`, "replace")
+              }),
+              child: stac.padding({ all: 8, child: stac.text("Change", { style: stac.textStyle({ fontSize: 13, fontWeight: "bold", color: Brand.primary }) }) })
+            })
+          ]
+        })
+      });
+    }
+
+    // STATE 2: No Pincode. Show the input field.
+    return stac.container({
+      padding: [16, 16, 16, 16],
+      decoration: { color: Brand.surface, borderRadius: Brand.radiusSmall, border: { color: Brand.divider, width: 1 } },
+      child: stac.column({
+        crossAxisAlignment: "start",
+        children: [
+          stac.row({
+            children: [
+               stac.svg({ src: AppIcons.LOCATION || "location_on", color: Brand.textSecondary, width: 18, height: 18 }),
+               stac.sizedBox({ width: 8 }),
+               stac.text("Check Delivery & Services", { style: stac.textStyle({ fontSize: 14, fontWeight: "bold", color: Brand.textPrimary }) }),
+            ]
+          }),
+          stac.sizedBox({ height: 12 }),
+// Wrap the entire row in a stac.form so the Button can harvest the TextField
+stac.form({
+  child: stac.row({
+    children: [
+stac.expanded({
+  child: {
+    type: "textFormField",
+    id: "pincode_input",
+    name: "pincode_input", 
+    initialValue: activePincode || "", // 🔥 YAHAN INITIAL VALUE ADD KARNI HAI
+    decoration: {
+      hintText: "Enter Pincode",
+      filled: true,
+      fillColor: Brand.background,
+      contentPadding: [12, 12, 12, 12],
+      border: { type: "outlineInputBorder", borderRadius: 8, color: Brand.divider },
+      enabledBorder: { type: "outlineInputBorder", borderRadius: 8, color: Brand.divider },
+      focusedBorder: { type: "outlineInputBorder", borderRadius: 8, color: Brand.primary }
+    }
+  }
+}),
+      
+      stac.sizedBox({ width: 12 }),
+      
+      stac.sizedBox({
+        height: 45, 
+        child:w.button({
+  text: "Check",
+  fullWidth: false, 
+  action: stac.apiRequest({
+    url: `/utilities/pincode`,
+    method: "POST",
+    // Tell the Dart parser to fetch the value of 'pincode_input' 
+    // and assign it to the 'pincode' key in the JSON body.
+    body: {
+      pincode: { 
+        actionType: "getFormValue", 
+        id: "pincode_input" 
+      }
+    },
+    onSuccess: stac.navigate(`/product/${product.id}`, "replace")
+  })
+})
+      })
+    ]
+  })
+})
+        ]
+      })
+    });
+  }
 
   /** Sliver with image carousel and floating back + wishlist buttons */
-/** Sliver with image carousel and floating back + wishlist buttons */
   static _imageSliver(product, mediaItems, mainImg, hasDiscount) {
     
     return stac.sliverToBoxAdapter({
@@ -188,6 +291,7 @@ export class ProductUI {
       }),
     });
   }
+
   /** Category badge + star rating in one row */
   static _topMeta(product) {
     return stac.row({
@@ -347,7 +451,7 @@ export class ProductUI {
    * `isWishlisted` is derived from product.wishlistCount > 0 so the
    * heart fills immediately without a round-trip on first render.
    */
-static _bottomBar(product, isGuest) {
+  static _bottomBar(product, isGuest) {
     // Use the injected value from the controller
     const isWishlisted = product.isWishlisted ?? false;
 

@@ -38,6 +38,34 @@ export class ProfileController {
     }
   }
 
+// POST /profile/pincode
+  static async updatePincode(req, res) {
+    try {
+      const activePincode = req.body.pincode || req.body.pincode_input || req.query.pincode;
+
+      // Watch your Node.js terminal when you hit 'Check'!
+      console.log("====================================");
+      console.log("[PINCODE ARRIVED]:", activePincode);
+      console.log("====================================");
+
+      if (req.user && activePincode) {
+        await ProfileRepository.updateUser(req.user.id, { 
+          activePincode: activePincode.toString() 
+        });
+      }
+
+      // Return the value inside meta so Flutter updates instantly
+      return res.status(200).json({ 
+        success: true, 
+        message: "Pincode updated",
+        meta: { activePincode: activePincode } 
+      });
+    } catch (e) {
+      console.error("[PINCODE ERROR]", e);
+      return res.status(500).json({ message: "Update pincode error", error: e.message });
+    }
+  }
+
   // GET /profile/addresses
   static async getAddresses(req, res) {
     try {

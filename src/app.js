@@ -21,7 +21,7 @@ import { router as productRoutes } from "./features/product/product.routes.js";
 import { router as dashBoardRoutes } from "./features/app/dashboard/dashboard.routes.js";
 import { router as searchRoutes } from "./features/search/search.routes.js";
 import { router as profileRoutes } from "./features/profile/profile.routes.js";
-
+import { router as utilityRoutes } from "./features/app/utilities/utilities.route.js"
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
 import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
@@ -100,6 +100,7 @@ app.use("/api/wishlist", wishlistRoutes);  // toggle, remove, move-to-cart
 app.use("/wishlist", wishlistRoutes); 
 app.use("/api/profile", profileRoutes); // Public profile routes (no auth required)
 app.use("/api/search", searchRoutes); // Public search routes (no auth required)
+app.use("/api/utilities", utilityRoutes); // For pincode update
 // ============================================================================
 // 7. ERROR HANDLING & HEALTH CHECKS
 // ============================================================================

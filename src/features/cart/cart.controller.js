@@ -7,8 +7,15 @@ import { CartUI } from "./cart.ui.js";
 
 export class CartController {
 
-  static async getGlobalCounts(userId) {
-    if (!userId) return { cartCount: 0, wishlistCount: 0 };
+// Update the helper signature to accept 'req' so it can read headers
+  static async getGlobalCounts(req) {
+    const userId = req.user?.id;
+    const activePincode = req.headers['x-pincode'] || req.user?.activePincode || null;
+
+    if (!userId) {
+      return { cartCount: 0, wishlistCount: 0, activePincode };
+    }
+
     const [cartTotal, wishlistTotal] = await Promise.all([
       prisma.cartItem.aggregate({ where: { userId }, _sum: { quantity: true } }),
       prisma.wishlist.count({ where: { userId } })
@@ -16,7 +23,8 @@ export class CartController {
     
     return {
       cartCount: cartTotal?._sum?.quantity ?? 0,
-      wishlistCount: wishlistTotal ?? 0
+      wishlistCount: wishlistTotal ?? 0,
+      activePincode // <-- Automatically added to meta in all cart responses
     };
   }
 
@@ -29,7 +37,7 @@ export class CartController {
 
     const cartItem = await CartRepository.addItemToCart(userId, productId, quantity);
     
-    const meta = await CartController.getGlobalCounts(userId);
+    const meta = await CartController.getGlobalCounts(req);
     // Tell Flutter the exact new quantity for this product's cart_qty_button
     meta.updatedProductQty = { productId: parseInt(productId), quantity: cartItem.quantity };
 
@@ -67,7 +75,7 @@ export class CartController {
     
     // Include global counts so appbar badges are accurate on cart page load
     const meta = userId 
-      ? await CartController.getGlobalCounts(userId) 
+      ?  await CartController.getGlobalCounts(req)
       : { cartCount: cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0), wishlistCount: 0 };
 
     return res.status(200).json({ ui: cartUi, meta });
@@ -86,7 +94,7 @@ static updateCartItem = AsyncHandler(async (req, res) => {
   const cartItems = await CartRepository.getCartItems(userId);
   const totals = CartController.calculateTotals(cartItems, pincode);
   
-  const meta = await CartController.getGlobalCounts(userId);
+    const meta = await CartController.getGlobalCounts(req);
 
   // When decrement brings qty to 0, the repository deletes the row and returns
   // the deleted record (Prisma always returns the old row on delete).
@@ -115,7 +123,7 @@ static updateCartItem = AsyncHandler(async (req, res) => {
 
     await CartRepository.deleteCartItem(productId, userId);
     
-    const meta = await CartController.getGlobalCounts(userId);
+    const meta = await CartController.getGlobalCounts(req);
     // quantity: 0 collapses the cart_qty_button back to the "Add to Cart" state
     meta.updatedProductQty = { productId: parseInt(productId), quantity: 0 };
 

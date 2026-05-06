@@ -51,10 +51,11 @@ export class DashboardController {
         cartCount     = cartTotal?._sum?.quantity ?? 0;
         wishlistCount = wishlistTotal ?? 0;
       }
+      const activePincode = req.headers['x-pincode'] || user?.activePincode || null;
 
-      return res.json({ 
+    return res.json({ 
         ui: dashboardUi, 
-        meta: { cartCount, wishlistCount } 
+        meta: { cartCount, wishlistCount, activePincode } 
       });
     } catch (error) {
       return res.status(500).json({ message: "Dashboard error", error: error.message });

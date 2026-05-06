@@ -62,7 +62,8 @@ export const AppIcons = {
   EYEOFF:"eye-off",
   RUPEE:"currency-rupee",
   MAIL:"mail-01",
-  CATEGORY:"diamond-01"
+  CATEGORY:"diamond-01",
+  LOCATION:"marker-pin-01"
   
 
 

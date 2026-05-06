@@ -55,9 +55,7 @@ export class SearchRepository {
 
     const productItems = products.map((p) => ({
       name: p.name,
-      // Raw query alias "categoryName" return karegi
       subtitle: p.categoryName || " ", 
-      // Raw query subquery se direct "imageUrl" nikal legi
       imageUrl: p.imageUrl || null,    
       action: {
         actionType: "server_navigate",

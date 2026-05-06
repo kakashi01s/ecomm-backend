@@ -9,7 +9,7 @@ router.use(authenticate);
 router.get("/",                          ProfileController.getProfile);
 router.get("/edit",                      ProfileController.getEditProfile);
 router.post("/edit",                     ProfileController.updateProfile);
-
+router.post("/pincode",ProfileController.updatePincode);
 // Addresses
 router.get("/addresses",                 ProfileController.getAddresses);
 router.get("/addresses/add",             ProfileController.getAddressAdd);
