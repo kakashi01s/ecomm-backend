@@ -2,39 +2,44 @@ import prisma from "../../core/prisma/client.js";
 
 export class SearchRepository {
   /**
-   * Fast prefix search across products and categories.
+   * Fast prefix/fuzzy search across products and categories using pg_trgm logic.
    * Returns a flat list shaped for the nativeSearchOverlay widget.
    */
   static async suggest(query, limit = 10) {
     const term = query.trim();
     if (!term || term.length < 2) return [];
 
-    const [products, categories] = await Promise.all([
-      prisma.product.findMany({
-        where: {
-          isActive: true,
-          OR: [
-            { name: { contains: term, mode: "insensitive" } },
-            { description: { contains: term, mode: "insensitive" } },
-          ],
-        },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          salePrice: true,
-          images: { select: { url: true }, take: 1 },
-          category: { select: { name: true } },
-        },
-        take: limit,
-        orderBy: { name: "asc" },
-      }),
+    // '%' add kar rahe hain wildcard search ke liye, jo pg_trgm index use karega
+    const dbTerm = `%${term}%`;
 
-      prisma.category.findMany({
-        where: { name: { contains: term, mode: "insensitive" } },
-        select: { id: true, name: true },
-        take: 3,
-      }),
+    const [products, categories] = await Promise.all([
+      prisma.$queryRaw`
+        SELECT 
+          p.id, 
+          p.name, 
+          p.price, 
+          p."salePrice", 
+          c.name AS "categoryName",
+          (
+            SELECT url 
+            FROM "ProductImage" 
+            WHERE "productId" = p.id 
+            ORDER BY id ASC 
+            LIMIT 1
+          ) AS "imageUrl"
+        FROM "Product" p
+        LEFT JOIN "Category" c ON p."categoryId" = c.id
+        WHERE p."isActive" = true 
+          AND (p.name ILIKE ${dbTerm} OR p.description ILIKE ${dbTerm})
+        ORDER BY p.name ASC
+        LIMIT ${limit}
+      `,
+      prisma.$queryRaw`
+        SELECT id, name 
+        FROM "Category" 
+        WHERE name ILIKE ${dbTerm} 
+        LIMIT 3
+      `
     ]);
 
     const categoryItems = categories.map((cat) => ({
@@ -50,8 +55,10 @@ export class SearchRepository {
 
     const productItems = products.map((p) => ({
       name: p.name,
-      subtitle: p.category?.name ?? " ",
-      imageUrl: p.images?.[0]?.url ?? null,
+      // Raw query alias "categoryName" return karegi
+      subtitle: p.categoryName || " ", 
+      // Raw query subquery se direct "imageUrl" nikal legi
+      imageUrl: p.imageUrl || null,    
       action: {
         actionType: "server_navigate",
         url: `/product/${p.id}`,
