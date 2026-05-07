@@ -66,7 +66,8 @@ const corsOptions = {
     "platform",
     "version",
     "Accept",
-    "x-device-type"
+    "x-device-type",
+    "x-pincode"
   ],
   exposedHeaders: ["Content-Range", "X-Content-Range"],
   optionsSuccessStatus: 200,

@@ -127,7 +127,15 @@ export class ProductController {
       // Inject the true values into the product object for the UI builder
       product.isWishlisted = isProductWishlisted;
       product.cartQty      = productCartQty;
-      const activePincode = req.headers['x-pincode'] || req.user?.activePincode || null;
+      let activePincode = req.headers['x-pincode'] || null;
+
+      if (!activePincode && req.user?.id) {
+        const userRecord = await prisma.user.findUnique({
+          where:  { id: req.user.id },
+          select: { activePincode: true },
+        });
+        activePincode = userRecord?.activePincode ?? null;
+      }
       const productUi = ProductUI.buildProductPage(product, isGuest, activePincode);
       
 

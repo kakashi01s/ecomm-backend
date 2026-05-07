@@ -9,11 +9,11 @@ export class ProfileRepository {
     });
   }
 
-  static async updateUser(userId, { name, phone, avatarUrl }) {
+static async updateUser(userId, { name, phone, avatarUrl, activePincode }) {
     return prisma.user.update({
       where: { id: userId },
-      data: { name, phone, avatarUrl },
-      select: { id: true, name: true, email: true, phone: true, avatarUrl: true },
+      data: { name, phone, avatarUrl, activePincode }, // Added activePincode here
+      select: { id: true, name: true, email: true, phone: true, activePincode: true },
     });
   }
 

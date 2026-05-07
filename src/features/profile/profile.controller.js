@@ -39,26 +39,35 @@ export class ProfileController {
   }
 
 // POST /profile/pincode
-  static async updatePincode(req, res) {
+static async updatePincode(req, res) {
     try {
-      const activePincode = req.body.pincode || req.body.pincode_input || req.query.pincode;
+      // 1. Grab the pincode, explicitly allowing null
+      let incomingPincode = req.body.pincode;
+      if (incomingPincode === undefined) incomingPincode = req.body.pincode_input;
+      if (incomingPincode === undefined) incomingPincode = req.query.pincode;
 
-      // Watch your Node.js terminal when you hit 'Check'!
+      // 2. Format it: if it's truthy, stringify it. Otherwise, force it to null.
+      const finalPincode = incomingPincode ? incomingPincode.toString() : null;
+
       console.log("====================================");
-      console.log("[PINCODE ARRIVED]:", activePincode);
+      console.log("[PINCODE ARRIVED]:", finalPincode);
       console.log("====================================");
 
-      if (req.user && activePincode) {
+      // 3. Save to DB (Notice we removed the `&& activePincode` check so nulls get saved)
+      if (req.user) {
+        console.log("[PINCODE] Saving to DB for user:", req.user.id, "pincode:", finalPincode);
         await ProfileRepository.updateUser(req.user.id, { 
-          activePincode: activePincode.toString() 
+          activePincode: finalPincode 
         });
+        console.log("[PINCODE] Saved successfully");
       }
 
-      // Return the value inside meta so Flutter updates instantly
+      // 4. Return it exactly as 'activePincode' so Flutter catches it
+      // Standard Express res.json WILL preserve the null value here.
       return res.status(200).json({ 
         success: true, 
-        message: "Pincode updated",
-        meta: { activePincode: activePincode } 
+        message: finalPincode ? "Pincode updated" : "Pincode cleared",
+        meta: { activePincode: finalPincode } 
       });
     } catch (e) {
       console.error("[PINCODE ERROR]", e);

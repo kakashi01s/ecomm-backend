@@ -21,24 +21,30 @@ export class AuthController {
       // 2. Fetch the initial counts if the user exists
       let cartCount = 0;
       let wishlistCount = 0;
+      let activePincode = null; 
 
-      if (user) {
-        const [cartTotal, wishlistTotal] = await Promise.all([
-          prisma.cartItem.aggregate({
-            where: { userId: user.id },
-            _sum: { quantity: true },
-          }),
-          prisma.wishlist.count({
-            where: { userId: user.id },
-          }),
-        ]).catch((error) => {
-          console.error("[AUTH] Error fetching cart/wishlist counts:", error.message);
-          return [{ _sum: { quantity: 0 } }, 0];
-        });
+if (user) {
+  const [cartTotal, wishlistTotal, userRecord] = await Promise.all([
+    prisma.cartItem.aggregate({
+      where: { userId: user.id },
+      _sum: { quantity: true },
+    }),
+    prisma.wishlist.count({
+      where: { userId: user.id },
+    }),
+    prisma.user.findUnique({                    // ← ADD
+      where: { id: user.id },
+      select: { activePincode: true },
+    }),
+  ]).catch((error) => {
+    console.error("[AUTH] Error fetching cart/wishlist counts:", error.message);
+    return [{ _sum: { quantity: 0 } }, 0, null];  // ← null for userRecord
+  });
 
-        cartCount     = cartTotal?._sum?.quantity ?? 0;
-        wishlistCount = wishlistTotal ?? 0;
-      }
+  cartCount     = cartTotal?._sum?.quantity ?? 0;
+  wishlistCount = wishlistTotal ?? 0;
+  activePincode = userRecord?.activePincode ?? null;  // ← ADD
+}
 
       // 3. Return the payload with the 'meta' object alongside 'ui' and 'theme'
       return res.json({ 
@@ -46,7 +52,8 @@ export class AuthController {
         ui: dashboardUi, 
         meta: { 
           cartCount: cartCount, 
-          wishlistCount: wishlistCount 
+          wishlistCount: wishlistCount ,
+          activePincode: activePincode, 
         } 
       });
 

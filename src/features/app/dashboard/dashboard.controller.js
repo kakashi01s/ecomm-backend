@@ -25,42 +25,46 @@ export class DashboardController {
     return payload;
   }
 
-  static async getDashboard(req, res) {
-    try {
-      const user = req.user || null;
-      const dashboardUi = await DashboardController.getDashboardUiPayload(user);
+static async getDashboard(req, res) {
+  try {
+    const user = req.user || null;
+    const dashboardUi = await DashboardController.getDashboardUiPayload(user);
 
-      // ── Seed CartState via _meta for the Dashboard ─────────────────
-      let cartCount = 0;
-      let wishlistCount = 0;
+    let cartCount = 0;
+    let wishlistCount = 0;
+    let activePincode = req.headers['x-pincode'] || null; // ← header is fast path
 
-      if (user) {
-        const [cartTotal, wishlistTotal] = await Promise.all([
-          prisma.cartItem.aggregate({
-            where: { userId: user.id },
-            _sum: { quantity: true },
-          }),
-          prisma.wishlist.count({
-            where: { userId: user.id },
-          }),
-        ]).catch((error) => {
-          console.error("[DASHBOARD] Error fetching cart/wishlist counts:", error.message);
-          return [{ _sum: { quantity: 0 } }, 0];
-        });
-
-        cartCount     = cartTotal?._sum?.quantity ?? 0;
-        wishlistCount = wishlistTotal ?? 0;
-      }
-      const activePincode = req.headers['x-pincode'] || user?.activePincode || null;
-
-    return res.json({ 
-        ui: dashboardUi, 
-        meta: { cartCount, wishlistCount, activePincode } 
+    if (user) {
+      const [cartTotal, wishlistTotal, userRecord] = await Promise.all([  // ← add userRecord
+        prisma.cartItem.aggregate({
+          where: { userId: user.id },
+          _sum: { quantity: true },
+        }),
+        prisma.wishlist.count({
+          where: { userId: user.id },
+        }),
+        prisma.user.findUnique({                  // ← ADD THIS
+          where: { id: user.id },
+          select: { activePincode: true },
+        }),
+      ]).catch((error) => {
+        console.error("[DASHBOARD] Error:", error.message);
+        return [{ _sum: { quantity: 0 } }, 0, null];
       });
-    } catch (error) {
-      return res.status(500).json({ message: "Dashboard error", error: error.message });
+
+      cartCount = cartTotal?._sum?.quantity ?? 0;
+      wishlistCount = wishlistTotal ?? 0;
+      activePincode = activePincode ?? userRecord?.activePincode ?? null; // ← DB fallback
     }
+
+    return res.json({
+      ui: dashboardUi,
+      meta: { cartCount, wishlistCount, activePincode },  // ← already correct
+    });
+  } catch (error) {
+    return res.status(500).json({ message: "Dashboard error", error: error.message });
   }
+}
 
 static async getDashboardUiPayload(user) {
     const { products, categories, banners } = await DashboardController.getCachedBackgroundData();
