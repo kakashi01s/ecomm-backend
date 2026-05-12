@@ -310,60 +310,17 @@ const buttonBody = stac.asyncButton({
       }),
     }),
 
-  // ─────────────────────────────────────────────────────────────────────
   // BADGED ICON BUTTON
-  //
-  // Drop-in upgrade of w.iconButton — identical tap target but renders a
-  // live notification bubble in the top-right corner of the icon.
-  //
-  // count      — integer. Badge is invisible when count === 0.
-  // maxCount   — values above this show as "{maxCount}+" (default 99)
-  // badgeColor — pill background, defaults to Brand.error (red)
-  //
-  // Usage:
-  //   w.badgedIconButton({
-  //     icon:   AppIcons.CART,
-  //     count:  cartItemCount,        // e.g. product.cartCount from API
-  //     action: stac.navigate("/cart"),
-  //   })
-  // ─────────────────────────────────────────────────────────────────────
-  badgedIconButton: ({
-    icon,
-    action,
-    count = 0,
-    color = null,
-    size = 22,
-    padding = 8,
-    badgeColor = Brand.error,
-    maxCount = 99,
-  }) => {
-    const clampedCount = count > maxCount ? maxCount + 1 : count;
-
-    const iconWidget = stac.inkWell({
-      action,
-      child: stac.padding({
-        all: padding,
-        child: stac.svg({
-          src: icon,
-          color: color ?? Brand.textPrimary,
-          width: size,
-          height: size,
-        }),
-      }),
-    });
-
-    // Skip the badge node entirely when nothing to show — keeps JSON lean.
-    if (clampedCount <= 0) return iconWidget;
-
-    return stac.badge({
-      count: clampedCount,
+badgedIconButton: ({ icon, action, stateKey, color = null, size = 22, badgeColor = Brand.error }) => {
+  return stac.reactiveBuilder({
+    listenTo: [stateKey],
+    child: stac.badge({
+      count: `{{${stateKey}}}`, // Listens to global 'cartCount' or 'wishlistCount'
       color: badgeColor,
       textColor: "#FFFFFF",
-      size: 16,
-      // Nudge the pill so it straddles the top-right edge of the icon —
-      // matching native Android / iOS badge placement.
       position: { top: 2, right: 2 },
-      child: iconWidget,
-    });
-  },
+      child: w.iconButton({ icon, action, color, size })
+    })
+  });
+}
 };

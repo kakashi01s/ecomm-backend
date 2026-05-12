@@ -3,6 +3,7 @@ import { ProductUI } from "./product.ui.js";
 import { ApiResponse } from "../../utils/apiResponse.js";
 import { S3Util } from "../../utils/s3_util.js";
 import prisma from "../../core/prisma/client.js";
+import { GlobalStateHelper } from "../app/utilities/globalState.util.js"; 
 
 export class ProductController {
 
@@ -89,7 +90,7 @@ export class ProductController {
    * The optional ?raw=true query param returns the raw JSON product object
    * for admin panels or debugging without building UI.
    */
-    static async getProductById(req, res) {
+static async getProductById(req, res) {
     try {
       const { id } = req.params;
 
@@ -103,46 +104,32 @@ export class ProductController {
       if (req.query.raw === "true") return res.status(200).json(new ApiResponse(200, product, "Product retrieved successfully"));
 
       const isGuest = !req.user;
-
-      let cartCount = 0;
-      let wishlistCount = 0;
-      let isProductWishlisted = false; // <-- Tracks specific product status
-      let productCartQty = 0;          // <-- Tracks specific product quantity
+      let isProductWishlisted = false; 
+      let productCartQty = 0;          
 
       if (!isGuest) {
-        // Run all 4 queries concurrently to get the absolute truth
-        const [cartTotal, wishlistTotal, userWishlist, userCartItem] = await Promise.all([
-          prisma.cartItem.aggregate({ where: { userId: req.user.id }, _sum: { quantity: true } }),
-          prisma.wishlist.count({ where: { userId: req.user.id } }),
+        const [userWishlist, userCartItem] = await Promise.all([
           prisma.wishlist.findFirst({ where: { userId: req.user.id, productId: parseInt(id) } }),
-          prisma.cartItem.findFirst({ where: { userId: req.user.id, productId: parseInt(id) } }) // <-- The missing query!
-        ]).catch(() => [{ _sum: { quantity: 0 } }, 0, null, null]);
+          prisma.cartItem.findFirst({ where: { userId: req.user.id, productId: parseInt(id) } }) 
+        ]).catch(() => [null, null]);
 
-        cartCount           = cartTotal?._sum?.quantity ?? 0;
-        wishlistCount       = wishlistTotal ?? 0;
         isProductWishlisted = !!userWishlist;
-        productCartQty      = userCartItem?.quantity ?? 0;
+        productCartQty = userCartItem?.quantity ?? 0;
       }
 
-      // Inject the true values into the product object for the UI builder
-      product.isWishlisted = isProductWishlisted;
-      product.cartQty      = productCartQty;
-      let activePincode = req.headers['x-pincode'] || null;
+      // Fetch global meta (counts, pincode)
+      const metaState = await GlobalStateHelper.getGlobalMeta(req.user, req.headers);
 
-      if (!activePincode && req.user?.id) {
-        const userRecord = await prisma.user.findUnique({
-          where:  { id: req.user.id },
-          select: { activePincode: true },
-        });
-        activePincode = userRecord?.activePincode ?? null;
-      }
-      const productUi = ProductUI.buildProductPage(product, isGuest, activePincode);
+      // Normalize pincode and inject product-specific keys
+      metaState.activePincode = metaState.activePincode || ""; 
+      metaState[`wishlist_${id}`] = isProductWishlisted;
+      metaState[`cart_qty_${id}`] = productCartQty;
+
+      const productUi = ProductUI.buildProductPage(product, isGuest, metaState.activePincode);
       
-
-      // Inject activePincode into the meta block
       return res.json({ 
         ui: productUi, 
-        meta: { cartCount, wishlistCount, activePincode } 
+        meta: metaState 
       });
     } catch (err) {
       res.status(500).json(new ApiResponse(500, {}, err.message || "Error retrieving product"));

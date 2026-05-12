@@ -2,6 +2,7 @@ import { DashboardRepository } from "./dashboard.repository.js";
 import { redisManager } from "../../../config/redisClient.js";
 import prisma from "../../../core/prisma/client.js";
 import { DashboardUI } from "./dashboard.ui.js"; // <-- Import the new UI builder!
+import { GlobalStateHelper } from "../utilities/globalState.util.js";
 
 export class DashboardController {
   static CACHE_KEY = "dashboard_data";
@@ -26,45 +27,21 @@ export class DashboardController {
   }
 
 static async getDashboard(req, res) {
-  try {
-    const user = req.user || null;
-    const dashboardUi = await DashboardController.getDashboardUiPayload(user);
+    try {
+      const user = req.user || null;
+      const dashboardUi = await DashboardController.getDashboardUiPayload(user);
+      
+      // Fetch the unified global meta state!
+      const metaState = await GlobalStateHelper.getGlobalMeta(user, req.headers);
 
-    let cartCount = 0;
-    let wishlistCount = 0;
-    let activePincode = req.headers['x-pincode'] || null; // ← header is fast path
-
-    if (user) {
-      const [cartTotal, wishlistTotal, userRecord] = await Promise.all([  // ← add userRecord
-        prisma.cartItem.aggregate({
-          where: { userId: user.id },
-          _sum: { quantity: true },
-        }),
-        prisma.wishlist.count({
-          where: { userId: user.id },
-        }),
-        prisma.user.findUnique({                  // ← ADD THIS
-          where: { id: user.id },
-          select: { activePincode: true },
-        }),
-      ]).catch((error) => {
-        console.error("[DASHBOARD] Error:", error.message);
-        return [{ _sum: { quantity: 0 } }, 0, null];
+      return res.json({
+        ui: dashboardUi,
+        meta: metaState, // Inject into GetX automatically
       });
-
-      cartCount = cartTotal?._sum?.quantity ?? 0;
-      wishlistCount = wishlistTotal ?? 0;
-      activePincode = activePincode ?? userRecord?.activePincode ?? null; // ← DB fallback
+    } catch (error) {
+      return res.status(500).json({ message: "Dashboard error", error: error.message });
     }
-
-    return res.json({
-      ui: dashboardUi,
-      meta: { cartCount, wishlistCount, activePincode },  // ← already correct
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Dashboard error", error: error.message });
   }
-}
 
 static async getDashboardUiPayload(user) {
     const { products, categories, banners } = await DashboardController.getCachedBackgroundData();

@@ -7,56 +7,25 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { DashboardController } from "../app/dashboard/dashboard.controller.js";
 import { AuthUI } from "./auth.ui.js"; 
 import prisma from "../../core/prisma/client.js"; // <-- Added Prisma import
+import { GlobalStateHelper } from "../app/utilities/globalState.util.js";
 
 export class AuthController {
 
-  static async bootstrap(req, res) {
+static async bootstrap(req, res) {
     const user = req.user || null;
     const theme = { primaryColor: "#FF5722", scaffoldBackgroundColor: "#F5F5F5" };
 
     try {
-      // 1. Get your initial UI
       const dashboardUi = await DashboardController.getDashboardUiPayload(user);
+      
+      // Fetch the unified global meta state!
+      const metaState = await GlobalStateHelper.getGlobalMeta(user, req.headers);
 
-      // 2. Fetch the initial counts if the user exists
-      let cartCount = 0;
-      let wishlistCount = 0;
-      let activePincode = null; 
-
-if (user) {
-  const [cartTotal, wishlistTotal, userRecord] = await Promise.all([
-    prisma.cartItem.aggregate({
-      where: { userId: user.id },
-      _sum: { quantity: true },
-    }),
-    prisma.wishlist.count({
-      where: { userId: user.id },
-    }),
-    prisma.user.findUnique({                    // ← ADD
-      where: { id: user.id },
-      select: { activePincode: true },
-    }),
-  ]).catch((error) => {
-    console.error("[AUTH] Error fetching cart/wishlist counts:", error.message);
-    return [{ _sum: { quantity: 0 } }, 0, null];  // ← null for userRecord
-  });
-
-  cartCount     = cartTotal?._sum?.quantity ?? 0;
-  wishlistCount = wishlistTotal ?? 0;
-  activePincode = userRecord?.activePincode ?? null;  // ← ADD
-}
-
-      // 3. Return the payload with the 'meta' object alongside 'ui' and 'theme'
       return res.json({ 
         theme, 
         ui: dashboardUi, 
-        meta: { 
-          cartCount: cartCount, 
-          wishlistCount: wishlistCount ,
-          activePincode: activePincode, 
-        } 
+        meta: metaState // Inject into GetX automatically
       });
-
     } catch (err) {
       console.error("Bootstrap Error:", err);
       return res.status(500).json({ message: "Error loading app" });

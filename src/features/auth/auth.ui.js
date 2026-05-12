@@ -5,11 +5,32 @@ import { AppIcons } from "../../core/constants/icons.js";
 
 export class AuthUI {
 
+  /**
+   * REUSABLE TRIGGER: Standard way to prompt Guest users to log in.
+   * Can be called from Dashboard, Product Card, or Wishlist taps.
+   */
+  static triggerAuth(displayType = "bottomSheet") {
+    const form = AuthUI.emailForm(displayType);
+    if (displayType === "bottomSheet") {
+      return stac.showBottomSheet(AuthUI.asBottomSheet(form), { isScrollControlled: true });
+    }
+    if (displayType === "dialog") {
+      return stac.showDialog(AuthUI.asDialog(form));
+    }
+    return stac.navigate(null, "push", AuthUI.asScreen("Welcome", form));
+  }
+
   // ==========================================
-  // 1. CORE FORMS
+  // 1. CORE FORMS (REACTIVE)
+  // ==========================================
+
+// ==========================================
+  // 1. CORE FORMS (REACTIVE)
   // ==========================================
 
   static emailForm(displayType) {
+    const errorKey = "auth_email_error"; 
+
     return stac.form({
       child: stac.column({
         mainAxisSize: "min",
@@ -26,16 +47,27 @@ export class AuthUI {
           }),
           stac.sizedBox({ height: 32 }),
 
+          // 🔥 PURE SDUI LOGIC: Let Flutter evaluate the error!
+          stac.reactiveBuilder({
+            listenTo: [errorKey],
+            child: {
+              type: "conditional_widget",
+              stateKey: errorKey,
+              expectedValue: "",
+              defaultValue: "", // Default is empty (no error)
+              onTrue: stac.sizedBox(), // No error -> No padding gap
+              onFalse: stac.padding({
+                bottom: 16,
+                child: stac.text(`{{${errorKey}}}`, { 
+                  style: stac.textStyle({ color: Brand.error, fontSize: 13, fontWeight: "w500" }) 
+                })
+              })
+            }
+          }),
+
           w.textField({
-            id: "email",
-            label: "Email Address",
-            hint: "you@example.com",
-            type: "email",
-            prefixIcon: AppIcons.MAIL,
-            validators: [
-              { type: "required", message: "Email is required" },
-              { type: "email",    message: "Enter a valid email address" },
-            ],
+            id: "email", label: "Email Address", hint: "you@example.com", type: "email", prefixIcon: AppIcons.MAIL,
+            validators: [ { type: "required", message: "Email is required" }, { type: "email", message: "Enter a valid email address" } ],
           }),
 
           stac.sizedBox({ height: 24 }),
@@ -43,13 +75,9 @@ export class AuthUI {
           w.button({
             text: "Continue",
             action: stac.apiRequest({
-              url: "/auth/action",
-              method: "POST",
-              body: {
-                step: "identify_user",
-                displayType,
-                email: { actionType: "getFormValue", id: "email" },
-              },
+              url: "/auth/action", method: "POST",
+              body: { step: "identify_user", displayType, email: { actionType: "getFormValue", id: "email" } },
+              onSuccess: stac.setGlobalState({ [errorKey]: "" }) // Clear error optimistically
             }),
           }),
         ],
@@ -58,40 +86,36 @@ export class AuthUI {
   }
 
   static passwordForm(email, displayType) {
+    const errorKey = "auth_password_error";
+
     return stac.form({
       child: stac.column({
         mainAxisSize: "min",
         crossAxisAlignment: "stretch",
         children: [
-          stac.text("Enter Password", {
-            style: stac.textStyle({ fontSize: 24, fontWeight: "bold", color: Brand.textPrimary }),
-          }),
+          stac.text("Enter Password", { style: stac.textStyle({ fontSize: 24, fontWeight: "bold", color: Brand.textPrimary }) }),
           stac.sizedBox({ height: 8 }),
-          stac.text(`Welcome back, ${email}`, {
-            style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }),
-          }),
+          stac.text(`Welcome back, ${email}`, { style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
           stac.sizedBox({ height: 24 }),
 
-          w.textField({
-            id: "password",
-            label: "Password",
-            type: "password",
-            prefixIcon: AppIcons.LOCK,
+          stac.reactiveBuilder({
+            listenTo: [errorKey],
+            child: {
+              type: "conditional_widget", stateKey: errorKey, expectedValue: "", defaultValue: "",
+              onTrue: stac.sizedBox(),
+              onFalse: stac.padding({ bottom: 16, child: stac.text(`{{${errorKey}}}`, { style: stac.textStyle({ color: Brand.error, fontSize: 13, fontWeight: "w500" }) }) })
+            }
           }),
 
+          w.textField({ id: "password", label: "Password", type: "password", prefixIcon: AppIcons.LOCK }),
           stac.sizedBox({ height: 32 }),
 
           w.button({
             text: "Login",
             action: stac.apiRequest({
-              url: "/auth/action",
-              method: "POST",
-              body: {
-                step: "verify_password",
-                email,
-                displayType,
-                password: { actionType: "getFormValue", id: "password" },
-              },
+              url: "/auth/action", method: "POST",
+              body: { step: "verify_password", email, displayType, password: { actionType: "getFormValue", id: "password" } },
+              onSuccess: stac.setGlobalState({ [errorKey]: "" })
             }),
           }),
         ],
@@ -100,41 +124,36 @@ export class AuthUI {
   }
 
   static otpForm(email, displayType) {
+    const errorKey = "auth_otp_error";
+
     return stac.form({
       child: stac.column({
         mainAxisSize: "min",
         crossAxisAlignment: "stretch",
         children: [
-          stac.text("Enter OTP", {
-            style: stac.textStyle({ fontSize: 24, fontWeight: "bold", color: Brand.textPrimary }),
-          }),
+          stac.text("Enter OTP", { style: stac.textStyle({ fontSize: 24, fontWeight: "bold", color: Brand.textPrimary }) }),
           stac.sizedBox({ height: 8 }),
-          stac.text(`We sent a code to ${email}`, {
-            style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }),
-          }),
+          stac.text(`We sent a code to ${email}`, { style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
           stac.sizedBox({ height: 24 }),
 
-          w.textField({
-            id: "otp",
-            label: "6-Digit Code",
-            hint: "······",
-            type: "number",
-            prefixIcon: AppIcons.PASSCODE,
+          stac.reactiveBuilder({
+            listenTo: [errorKey],
+            child: {
+              type: "conditional_widget", stateKey: errorKey, expectedValue: "", defaultValue: "",
+              onTrue: stac.sizedBox(),
+              onFalse: stac.padding({ bottom: 16, child: stac.text(`{{${errorKey}}}`, { style: stac.textStyle({ color: Brand.error, fontSize: 13, fontWeight: "w500" }) }) })
+            }
           }),
 
+          w.textField({ id: "otp", label: "6-Digit Code", hint: "······", type: "number", prefixIcon: AppIcons.PASSCODE }),
           stac.sizedBox({ height: 32 }),
 
           w.button({
             text: "Verify",
             action: stac.apiRequest({
-              url: "/auth/action",
-              method: "POST",
-              body: {
-                step: "verify_otp",
-                email,
-                displayType,
-                otp: { actionType: "getFormValue", id: "otp" },
-              },
+              url: "/auth/action", method: "POST",
+              body: { step: "verify_otp", email, displayType, otp: { actionType: "getFormValue", id: "otp" } },
+              onSuccess: stac.setGlobalState({ [errorKey]: "" })
             }),
           }),
         ],
@@ -164,30 +183,30 @@ export class AuthUI {
 
   static asBottomSheet(formWidget) {
     return stac.keyboardAvoiding({
-    child: stac.card({
-      margin: 0,
-      elevation: 0,
-      color: Brand.surface,
-      shape: { borderRadius: 24 },
-      child: stac.padding({
-        left: 24, top: 24, right: 24, bottom: 48,
-        child: stac.singleChildScrollView({
-          child: stac.column({
-            mainAxisSize: "min",
-            children: [
-              stac.container({
-                width: 40,
-                height: 4,
-                decoration: { color: Brand.divider, borderRadius: 2 },
-              }),
-              stac.sizedBox({ height: 24 }),
-              formWidget,
-            ],
+      child: stac.card({
+        margin: 0,
+        elevation: 0,
+        color: Brand.surface,
+        shape: { borderRadius: 24 },
+        child: stac.padding({
+          left: 24, top: 24, right: 24, bottom: 48,
+          child: stac.singleChildScrollView({
+            child: stac.column({
+              mainAxisSize: "min",
+              children: [
+                stac.container({
+                  width: 40,
+                  height: 4,
+                  decoration: { color: Brand.divider, borderRadius: 2 },
+                }),
+                stac.sizedBox({ height: 24 }),
+                formWidget,
+              ],
+            }),
           }),
         }),
-        }),
-        }),
-  });
+      }),
+    });
   }
 
   static asDialog(formWidget) {
@@ -216,16 +235,16 @@ export class AuthUI {
     let title;
 
     if (step === "password") {
-      form  = AuthUI.passwordForm(email, displayType);
+      form = AuthUI.passwordForm(email, displayType);
       title = "Enter Password";
     } else if (step === "otp") {
-      form  = AuthUI.otpForm(email, displayType);
+      form = AuthUI.otpForm(email, displayType);
       title = "Enter OTP";
     }
 
     if (displayType === "bottomSheet") {
-  return stac.showBottomSheet(AuthUI.asBottomSheet(form), { isScrollControlled: true });
-}
+      return stac.showBottomSheet(AuthUI.asBottomSheet(form), { isScrollControlled: true });
+    }
     if (displayType === "dialog") {
       return stac.showDialog(AuthUI.asDialog(form));
     }

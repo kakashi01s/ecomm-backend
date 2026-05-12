@@ -18,15 +18,11 @@ export class DashboardUI {
     deviceType      = "mobile",
   } = {}) {
     return {
-      initialIndex: 0,
       screens: [
         DashboardUI.buildDashboardUi(
           user, products, categories, banners,
           userCartMap, userWishlistSet, deviceType
         ),
-        CategoryUI.buildCategoryUi(categories),
-        DashboardUI._wishlistScreen(user),
-        ProfileUI.buildProfileUi(user),
       ],
     };
   }
@@ -36,13 +32,10 @@ export class DashboardUI {
     userCartMap, userWishlistSet, deviceType = "mobile"
   ) {
     const isGuest = !user;
+    const isDesktop = deviceType === "desktop";
 
-    const horizontalCards = DashboardUI._productCards(
-      products, isGuest, userCartMap, userWishlistSet, "horizontal"
-    );
-    const gridCards = DashboardUI._productCards(
-      products, isGuest, userCartMap, userWishlistSet, "grid"
-    );
+    const horizontalCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "horizontal");
+    const gridCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "grid");
 
     const horizontalCardItems = horizontalCards.map((card) =>
       stac.padding({
@@ -56,8 +49,6 @@ export class DashboardUI {
     if (deviceType === "tablet")  { gridCrossAxisCount = 3; gridAspectRatio = 0.65; }
     if (deviceType === "desktop") { gridCrossAxisCount = 4; gridAspectRatio = 0.62; }
 
-    const isDesktop = deviceType === "desktop";
-
     const homeBody = stac.form({
       child: stac.customScrollView({
         slivers: [
@@ -69,33 +60,17 @@ export class DashboardUI {
           }),
 
           stac.sliverAppBar({
-            pinned: true,
-            floating: false,
-            primary: false,
-            automaticallyImplyLeading: false,
-            backgroundColor: Brand.surface,
-            elevation: 0,
-            titleSpacing: 0,
+            pinned: true, floating: false, primary: false, automaticallyImplyLeading: false,
+            backgroundColor: Brand.surface, elevation: 0, titleSpacing: 0,
             title: ui.nativeSearchOverlay({
               apiEndpoint: "/search/suggestions",
               onSubmitAction: stac.navigate("/search/results?q={{query}}", "push"),
               searchBarUi: w.textField({
-                id: "dashboard_search",
-                hint: "Search rings, necklaces...",
+                id: "dashboard_search", hint: "Search rings, necklaces...",
                 decoration: {
-                  hintText: "Search rings, necklaces...",
-                  filled: true,
-                  fillColor: Brand.background,
+                  hintText: "Search rings, necklaces...", filled: true, fillColor: Brand.background,
                   contentPadding: [16, 0, 16, 0],
-                  prefixIcon: stac.padding({
-                    all: 12,
-                    child: stac.svg({
-                      src: AppIcons.SEARCH,
-                      color: Brand.textSecondary,
-                      width: 20,
-                      height: 20,
-                    }),
-                  }),
+                  prefixIcon: stac.padding({ all: 12, child: stac.svg({ src: AppIcons.SEARCH, color: Brand.textSecondary, width: 20, height: 20 }) }),
                   border: { type: "outlineInputBorder", borderRadius: 30, color: Brand.divider },
                   enabledBorder: { type: "outlineInputBorder", borderRadius: 30, color: Brand.divider },
                   focusedBorder: { type: "outlineInputBorder", borderRadius: 30, color: Brand.primary },
@@ -108,39 +83,22 @@ export class DashboardUI {
                     stac.clipRRect({
                       borderRadius: 8,
                       child: stac.image({
-                        src: "${_item.imageUrl}",
-                        width: 38, height: 38, fit: "cover",
-                        errorWidget: stac.container({
-                          width: 38, height: 38,
-                          decoration: { color: Brand.background, borderRadius: 8 },
-                          child: stac.center({
-                            child: stac.icon({ icon: "search", color: Brand.textSecondary, size: 18 }),
-                          }),
-                        }),
+                        src: "${_item.imageUrl}", width: 38, height: 38, fit: "cover",
+                        errorWidget: stac.container({ width: 38, height: 38, decoration: { color: Brand.background, borderRadius: 8 }, child: stac.center({ child: stac.icon({ icon: "search", color: Brand.textSecondary, size: 18 }) }) }),
                       }),
                     }),
                     stac.sizedBox({ width: 12 }),
                     stac.expanded({
                       child: stac.column({
-                        crossAxisAlignment: "start",
-                        mainAxisSize: "min",
+                        crossAxisAlignment: "start", mainAxisSize: "min",
                         children: [
-                          stac.text("${_item.name}", {
-                            maxLines: 1, overflow: "ellipsis",
-                            style: stac.textStyle({ fontSize: 14, color: Brand.textPrimary, fontWeight: "w500" }),
-                          }),
+                          stac.text("${_item.name}", { maxLines: 1, overflow: "ellipsis", style: stac.textStyle({ fontSize: 14, color: Brand.textPrimary, fontWeight: "w500" }) }),
                           stac.sizedBox({ height: 2 }),
-                          stac.text("${_item.subtitle}", {
-                            maxLines: 1, overflow: "ellipsis",
-                            style: stac.textStyle({ fontSize: 11, color: Brand.textSecondary }),
-                          }),
+                          stac.text("${_item.subtitle}", { maxLines: 1, overflow: "ellipsis", style: stac.textStyle({ fontSize: 11, color: Brand.textSecondary }) }),
                         ],
                       }),
                     }),
-                    stac.padding({
-                      right: 4,
-                      child: stac.icon({ icon: "north_west", size: 14, color: "#CCCCCC" }),
-                    }),
+                    stac.padding({ right: 4, child: stac.icon({ icon: "north_west", size: 14, color: "#CCCCCC" }) }),
                   ],
                 }),
               }),
@@ -148,56 +106,43 @@ export class DashboardUI {
           }),
 
           stac.sliverToBoxAdapter({
-            child: stac.padding({
-              left: 16, right: 16, bottom: 24, top: 16,
-              child: isDesktop
-                ? DashboardUI._desktopCarousel(banners)
-                : DashboardUI._mobileCarousel(banners),
-            }),
+            child: stac.padding({ left: 16, right: 16, bottom: 24, top: 16, child: isDesktop ? DashboardUI._desktopCarousel(banners) : DashboardUI._mobileCarousel(banners) }),
           }),
 
-          stac.sliverToBoxAdapter({
-            child: stac.padding({
-              left: 16, bottom: 24,
-              child: {
-                type: "webScrollRow",
-                padding: [0, 0, 16, 0],
-                children: DashboardUI._categoryCards(categories),
-              },
-            }),
-          }),
+   stac.sliverToBoxAdapter({
+  child: stac.padding({ 
+    left: 16, bottom: 24, 
+    child: stac.singleChildScrollView({
+      scrollDirection: "horizontal",
+      padding: [0, 0, 16, 0],
+      child: stac.row({
+        crossAxisAlignment: "start",
+        children: DashboardUI._categoryCards(categories)
+      })
+    }) 
+  }),
+}),
 
           stac.sliverToBoxAdapter({
-            child: stac.padding({
-              left: 16, right: 16, bottom: 12,
-              child: ui.sectionHeader({
-                title: "New Launches",
-                actionText: "View All",
-                action: stac.navigate("/new-launches"),
-              }),
-            }),
+            child: stac.padding({ left: 16, right: 16, bottom: 12, child: ui.sectionHeader({ title: "New Launches", actionText: "View All", action: stac.navigate("/new-launches") }) }),
           }),
 
-          stac.sliverToBoxAdapter({
-            child: stac.padding({
-              left: 16, bottom: 32,
-              child: {
-                type: "webScrollRow",
-                padding: [0, 0, 16, 0],
-                children: horizontalCardItems,
-              },
-            }),
-          }),
+stac.sliverToBoxAdapter({
+  child: stac.padding({ 
+    left: 16, bottom: 32, 
+    child: stac.singleChildScrollView({
+      scrollDirection: "horizontal",
+      padding: [0, 0, 16, 0],
+      child: stac.row({
+        crossAxisAlignment: "start",
+        children: horizontalCardItems
+      })
+    }) 
+  }),
+}),
 
           stac.sliverToBoxAdapter({
-            child: stac.padding({
-              left: 16, right: 16, bottom: 16,
-              child: ui.sectionHeader({
-                title: "Bestsellers",
-                actionText: "View All",
-                action: stac.navigate("/bestsellers"),
-              }),
-            }),
+            child: stac.padding({ left: 16, right: 16, bottom: 16, child: ui.sectionHeader({ title: "Bestsellers", actionText: "View All", action: stac.navigate("/bestsellers") }) }),
           }),
 
           stac.sliverToBoxAdapter({
@@ -205,12 +150,7 @@ export class DashboardUI {
               top: 0, left: 16, right: 16, bottom: 100,
               child: stac.gridView({
                 padding: { top: 0, left: 0, right: 0, bottom: 0 },
-                crossAxisCount: gridCrossAxisCount,
-                childAspectRatio: gridAspectRatio,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                shrinkWrap: true,
-                physics: "never",
+                crossAxisCount: gridCrossAxisCount, childAspectRatio: gridAspectRatio, mainAxisSpacing: 16, crossAxisSpacing: 16, shrinkWrap: true, physics: "never",
                 children: gridCards,
               }),
             }),
@@ -219,32 +159,27 @@ export class DashboardUI {
       }),
     });
 
+    // ── ROOT: POPSCOPE WITH CONDITIONAL LOGIC ────────────────────────────────
     return stac.popScope({
       canPop: false,
-     
-      action: stac.handleDashboardBack(
-        stac.showDialog(
+      action: stac.conditionalAction({
+        stateKey: "dashboard_tab_index",
+        expectedValue: 0,
+        defaultValue: 0,
+        onTrue: stac.showDialog(
           stac.center({
             child: stac.card({
-              margin: 40,
-              color: Brand.surface,
-              shape: { borderRadius: Brand.radiusLarge },
+              margin: 40, color: Brand.surface, shape: { borderRadius: Brand.radiusLarge },
               child: stac.padding({
                 all: 24,
                 child: stac.column({
-                  mainAxisSize: "min",
-                  crossAxisAlignment: "center",
+                  mainAxisSize: "min", crossAxisAlignment: "center",
                   children: [
                     stac.icon({ icon: "exit_to_app", size: 48, color: Brand.primary }),
                     stac.sizedBox({ height: 16 }),
-                    stac.text("Exit App?", {
-                      style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary }),
-                    }),
+                    stac.text("Exit App?", { style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary }) }),
                     stac.sizedBox({ height: 8 }),
-                    stac.text("Are you sure you want to close the application?", {
-                      textAlign: "center",
-                      style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }),
-                    }),
+                    stac.text("Are you sure you want to close the application?", { textAlign: "center", style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
                     stac.sizedBox({ height: 24 }),
                     stac.row({
                       children: [
@@ -258,84 +193,103 @@ export class DashboardUI {
               }),
             }),
           })
-        )
-      ),
-      child: stac.defaultBottomNavigationController({
-        length: 4,
-        initialIndex: typeof tabIndex !== 'undefined' ? tabIndex : 0, // Yahan tabIndex pass hoga
+        ),
+        onFalse: stac.setGlobalState({ dashboard_tab_index: 0 })
+      }),
       
-        child: {
-          type: "tab_controller_hook",
-          child: stac.scaffold({
-            backgroundColor: Brand.background,
-            drawer: DashboardUI._drawer(isGuest, user),
-            body: {
-              type: "hideOnScroll",
-              body: stac.bottomNavigationView({
-                children: [
-                  homeBody,
-                  CategoryUI.buildCategoryUi(categories),
-                  DashboardUI._wishlistScreen(user),
-                  ProfileUI.buildProfileUi(user),
-                ]
-              }),
-              bottomNav: isDesktop ? undefined : DashboardUI._bottomNav(),
-            },
+      // ── THE SCAFFOLD WITH REACTIVE INDEXED STACK ─────────────────────────────
+     
+      child: stac.scaffold({
+        backgroundColor: Brand.background,
+        drawer: DashboardUI._drawer(isGuest, user),
+        body: {
+          type: "hideOnScroll",
+          
+          // 🚀 REMOVED reactiveBuilder! 
+          // Passed the exact state key string. Flutter handles the rest instantly.
+          body: stac.indexedStack({
+            index: "dashboard_tab_index", 
+            children: [
+              homeBody,
+              CategoryUI.buildCategoryUi(categories),
+              DashboardUI._wishlistScreen(user),
+              ProfileUI.buildProfileUi(user),
+            ]
           }),
-        }
+          
+          bottomNav: isDesktop ? undefined : DashboardUI._bottomNav(),
+        },
       }),
     });
   }
 
-  static _bottomNav() {
+  // ── CUSTOM PURE-SDUI BOTTOM NAVIGATION ──────────────────────────────────
+static _bottomNav() {
+    const tabs = [
+      { icon: AppIcons.HOME, label: "Home", index: 0 },
+      { icon: AppIcons.CATEGORY, label: "Categories", index: 1 },
+      { icon: AppIcons.HEART, label: "Wishlist", index: 2 },
+      { icon: AppIcons.PERSON, label: "Profile", index: 3 },
+    ];
+
     return stac.container({
       decoration: {
         color: Brand.surface,
-        border: {
-          top: { color: Brand.divider || "#EAEAEA", width: 1 },
-        },
-        boxShadow: [
-          { color: "#00000008", blurRadius: 16, spreadRadius: 0, offset: { dx: 0, dy: -4 } },
-        ],
+        border: { top: { color: Brand.divider || "#EAEAEA", width: 1 } },
+        boxShadow: [{ color: "#00000008", blurRadius: 16, spreadRadius: 0, offset: { dx: 0, dy: -4 } }],
       },
       child: stac.safeArea({
-        top: false, 
-        left: false,
-        right: false,
-        child: stac.bottomNavigationBar({
-          backgroundColor:      "transparent",
-          elevation:            0,
-          selectedItemColor:    Brand.primary,
-          unselectedItemColor:  Brand.textSecondary,
-          barType:              "fixed",
-          showSelectedLabels:   true,
-          showUnselectedLabels: true,
-          selectedFontSize:     12,
-          unselectedFontSize:   12,
-          iconSize:             24,
-          items: [
-            stac.bottomNavigationBarItem({
-              icon:       stac.svg({ src: AppIcons.HOME, color: Brand.textSecondary, width: 24, height: 24 }),
-              activeIcon: stac.svg({ src: AppIcons.HOME, color: Brand.primary,       width: 24, height: 24 }),
-              label: "Home",
-            }),
-            stac.bottomNavigationBarItem({
-              icon:       stac.svg({ src: AppIcons.CATEGORY, color: Brand.textSecondary, width: 24, height: 24 }),
-              activeIcon: stac.svg({ src: AppIcons.CATEGORY, color: Brand.primary,       width: 24, height: 24 }),
-              label: "Categories",
-            }),
-            stac.bottomNavigationBarItem({
-              icon:       stac.svg({ src: AppIcons.HEART, color: Brand.textSecondary, width: 24, height: 24 }),
-              activeIcon: stac.svg({ src: AppIcons.HEART, color: Brand.primary,       width: 24, height: 24 }),
-              label: "Wishlist",
-            }),
-            stac.bottomNavigationBarItem({
-              icon:       stac.svg({ src: AppIcons.PERSON, color: Brand.textSecondary, width: 24, height: 24 }),
-              activeIcon: stac.svg({ src: AppIcons.PERSON, color: Brand.primary,       width: 24, height: 24 }),
-              label: "Profile",
-            }),
-          ],
-        }),
+        top: false, left: false, right: false,
+        
+        // Listen to tab changes
+        child: stac.reactiveBuilder({
+          listenTo: ["dashboard_tab_index"],
+          child: stac.row({
+            mainAxisAlignment: "spaceAround",
+            children: tabs.map(tab => 
+              stac.expanded({
+                child: stac.inkWell({
+                  action: stac.setGlobalState({ dashboard_tab_index: tab.index }),
+                  child: stac.padding({
+                    vertical: 10,
+                    
+                    // PURE SDUI LOGIC: Render Active or Inactive UI
+                    child: stac.conditionalWidget({
+                      stateKey: "dashboard_tab_index",
+                      expectedValue: tab.index,
+                      defaultValue: 0,
+                      
+                      // UI WHEN TAB IS ACTIVE
+                      onTrue: stac.column({
+                        mainAxisSize: "min",
+                        children: [
+                          stac.svg({ src: tab.icon, color: Brand.primary, width: 24, height: 24 }),
+                          stac.sizedBox({ height: 4 }),
+                          stac.text(tab.label, { 
+                            style: stac.textStyle({ fontSize: 12, fontWeight: "bold", color: Brand.primary }) 
+                          })
+                        ]
+                      }),
+                      
+                      // UI WHEN TAB IS INACTIVE
+                      onFalse: stac.column({
+                        mainAxisSize: "min",
+                        children: [
+                          stac.svg({ src: tab.icon, color: Brand.textSecondary, width: 24, height: 24 }),
+                          stac.sizedBox({ height: 4 }),
+                          stac.text(tab.label, { 
+                            style: stac.textStyle({ fontSize: 12, fontWeight: "w500", color: Brand.textSecondary }) 
+                          })
+                        ]
+                      })
+                    })
+
+                  })
+                })
+              })
+            )
+          })
+        })
       }),
     });
   }
@@ -354,25 +308,20 @@ export class DashboardUI {
                 ? stac.padding({
                     all: 40,
                     child: stac.column({
-                      mainAxisAlignment: "center",
-                      crossAxisAlignment: "center",
+                      mainAxisAlignment: "center", crossAxisAlignment: "center",
                       children: [
                         stac.icon({ icon: "favorite_border", color: Brand.divider, size: 80 }),
                         stac.sizedBox({ height: 20 }),
                         stac.text("Sign in to view your wishlist", { textAlign: "center", style: stac.textStyle({ fontSize: 16, color: Brand.textSecondary }) }),
                         stac.sizedBox({ height: 24 }),
-                        stac.sizedBox({
-                          width: 200,
-                          child: w.button({ text: "Sign In", action: stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("dialog"))) }),
-                        }),
+                        stac.sizedBox({ width: 200, child: w.button({ text: "Sign In", action: AuthUI.triggerAuth("dialog") }) }),
                       ],
                     }),
                   })
                 : stac.padding({
                     all: 40,
                     child: stac.column({
-                      mainAxisAlignment: "center",
-                      crossAxisAlignment: "center",
+                      mainAxisAlignment: "center", crossAxisAlignment: "center",
                       children: [
                         stac.icon({ icon: "favorite_border", color: Brand.divider, size: 80 }),
                         stac.sizedBox({ height: 20 }),
@@ -380,10 +329,7 @@ export class DashboardUI {
                         stac.sizedBox({ height: 8 }),
                         stac.text("Save items you love and find them here", { textAlign: "center", style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
                         stac.sizedBox({ height: 28 }),
-                        stac.sizedBox({
-                          width: 200,
-                          child: w.button({ text: "Explore Products", action: stac.navigate("/dashboard", "replace") }),
-                        }),
+                        stac.sizedBox({ width: 200, child: w.button({ text: "Explore Products", action: stac.setGlobalState({ dashboard_tab_index: 0 }) }) }),
                       ],
                     }),
                   }),
@@ -402,33 +348,14 @@ export class DashboardUI {
     }));
   }
 
-  static _mobileCarousel(banners) {
-    return ui.mediaCarousel({ items: banners, height: 220, borderRadius: 15, showDots: true });
-  }
+  static _mobileCarousel(banners) { return ui.mediaCarousel({ items: banners, height: 220, borderRadius: 15, showDots: true }); }
 
   static _desktopCarousel(banners) {
     const items = DashboardUI._bannerItems(banners);
     const rightBanners = items.slice(0, 2).map((b, i) =>
-      stac.expanded({
-        child: stac.padding({
-          top: i === 1 ? 12 : 0,
-          child: stac.clipRRect({
-            borderRadius: 16,
-            child: stac.inkWell({ action: b.linkUrl ? stac.navigate(b.linkUrl) : null, child: stac.image({ src: b.mediaUrl, fit: "cover" }) }),
-          }),
-        }),
-      })
+      stac.expanded({ child: stac.padding({ top: i === 1 ? 12 : 0, child: stac.clipRRect({ borderRadius: 16, child: stac.inkWell({ action: b.linkUrl ? stac.navigate(b.linkUrl) : null, child: stac.image({ src: b.mediaUrl, fit: "cover" }) }) }) }) })
     );
-    return stac.sizedBox({
-      height: 220,
-      child: stac.row({
-        children: [
-          stac.expanded({ flex: 3, child: { type: "carousel", height: 220, autoPlayIntervalSeconds: 4, borderRadius: 20, items } }),
-          stac.sizedBox({ width: 12 }),
-          stac.expanded({ flex: 2, child: stac.column({ crossAxisAlignment: "stretch", children: rightBanners }) }),
-        ],
-      }),
-    });
+    return stac.sizedBox({ height: 220, child: stac.row({ children: [stac.expanded({ flex: 3, child: { type: "carousel", height: 220, autoPlayIntervalSeconds: 4, borderRadius: 20, items } }), stac.sizedBox({ width: 12 }), stac.expanded({ flex: 2, child: stac.column({ crossAxisAlignment: "stretch", children: rightBanners }) })] }) });
   }
 
   static _categoryCards(categories) {
@@ -459,34 +386,69 @@ export class DashboardUI {
         heroTag:       `product_image_${p.id}_${heroContext}`,
         onCardTap:      stac.navigate(`/product/${p.id}`),
         onWishlistTap:  isGuest
-          ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet")))
+          ? AuthUI.triggerAuth("bottomSheet")
           : stac.apiRequest({ url: `/wishlist/toggle`, method: "POST", body: { productId: p.id } }),
         onAddToCartTap: isGuest
-          ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet")))
+          ? AuthUI.triggerAuth("bottomSheet")
           : stac.apiRequest({ url: `/cart/add`, method: "POST", body: { productId: p.id, quantity: 1 }, onSuccess: stac.showToast("Added to cart! 🛒") }),
-        onIncrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "increment", pincode: "302001" } }),
-        onDecrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "decrement", pincode: "302001" } }),
+        onIncrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "increment" } }),
+        onDecrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "decrement" } }),
       });
     });
   }
 
   static _actionIcons(isGuest, user, isDesktop) {
     const icons = [
-      { icon: AppIcons.HEART, action: stac.navigate("/wishlist"), badgeType: "wishlist" },
-      { icon: AppIcons.CART, action: stac.navigate("/cart"), badgeType: "cart" },
+      stac.reactiveBuilder({
+        listenTo: ["wishlistCount"],
+        child: stac.badge({
+          count: "{{wishlistCount}}",
+          color: Brand.error,
+          textColor: "#FFFFFF",
+          position: { top: 2, right: 2 },
+          child: w.iconButton({
+            icon: AppIcons.HEART,
+            action: isGuest ? AuthUI.triggerAuth("bottomSheet") : stac.setGlobalState({ dashboard_tab_index: 2 })
+          })
+        })
+      }),
+      stac.reactiveBuilder({
+        listenTo: ["cartCount"],
+        child: stac.badge({
+          count: "{{cartCount}}",
+          color: Brand.error,
+          textColor: "#FFFFFF",
+          position: { top: 2, right: 2 },
+          child: w.iconButton({
+            icon: AppIcons.CART,
+            action: stac.navigate("/cart")
+          })
+        })
+      })
     ];
+
     if (isDesktop) {
-      icons.push(stac.row({ mainAxisSize: "min", children: [stac.sizedBox({ width: 8 }), isGuest ? w.button({ text: "Sign In", fullWidth: false, action: stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("dialog"))) }) : w.iconButton({ icon: AppIcons.PERSON, action: stac.popThen(stac.navigate("/profile")), color: Brand.primary })] }));
+      icons.push(
+        stac.row({
+          mainAxisSize: "min",
+          children: [
+            stac.sizedBox({ width: 8 }),
+            isGuest 
+              ? w.button({ text: "Sign In", fullWidth: false, action: AuthUI.triggerAuth("dialog") }) 
+              : w.iconButton({ icon: AppIcons.PERSON, action: stac.setGlobalState({ dashboard_tab_index: 3 }), color: Brand.primary })
+          ]
+        })
+      );
     }
     return icons;
   }
 
-  static _drawer(isGuest, user) {
+static _drawer(isGuest, user) {
     const navItems = [
-      { icon: AppIcons.HOME,        label: "Home",       action: stac.popThen(stac.changeTab(0)) },
-      { icon: AppIcons.CATEGORY,    label: "Categories", action: stac.popThen(stac.changeTab(1)) },
-      { icon: AppIcons.HEART,       label: "Wishlist",   action: stac.popThen(stac.changeTab(2)) },
-      { icon: AppIcons.PERSON,      label: "Profile",    action: isGuest ? stac.popThen(stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("bottomSheet")))) : stac.popThen(stac.changeTab(3)) },
+      { icon: AppIcons.HOME,        label: "Home",       action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 0 })) },
+      { icon: AppIcons.CATEGORY,    label: "Categories", action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 1 })) },
+      { icon: AppIcons.HEART,       label: "Wishlist",   action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 2 })) },
+      { icon: AppIcons.PERSON,      label: "Profile",    action: isGuest ? stac.popThen(AuthUI.triggerAuth("bottomSheet")) : stac.popThen(stac.setGlobalState({ dashboard_tab_index: 3 })) },
       { icon: AppIcons.SETTING,     label: "Settings",   action: stac.popThen(stac.navigate("/settings", "push")) },
     ];
 
@@ -523,9 +485,20 @@ export class DashboardUI {
               stac.padding({
                 all: 20,
                 child: isGuest
-                  ? w.button({ text: "Sign In / Register", action: stac.showDialog(AuthUI.asDialog(AuthUI.emailForm("bottomSheet"))) })
+                  // 🔥 FIX: w.button is the widget, stac.popThen wraps the action!
+                  ? w.button({ 
+                      text: "Sign In / Register", 
+                      action: stac.popThen(AuthUI.triggerAuth("bottomSheet")) 
+                    })
                   : w.button({
-                      text: "Logout", variant: "outline", action: stac.apiRequest({ url: "/auth/logout", method: "POST", onSuccess: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")), onError: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")) }),
+                      text: "Logout", 
+                      variant: "outline", 
+                      action: stac.apiRequest({ 
+                        url: "/auth/logout", 
+                        method: "POST", 
+                        onSuccess: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")), 
+                        onError: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")) 
+                      }),
                     }),
               }),
             ],

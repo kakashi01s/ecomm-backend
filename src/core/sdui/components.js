@@ -36,56 +36,86 @@ const _productImage = ({ url, width, height, borderRadius = Brand.radiusSmall })
   stac.clipRRect({
     borderRadius,
     child: stac.image({
-      src: url || "https://via.placeholder.com/400x500",
+      src: url || "https://via.placeholder.com/400x500.png?text=No+Image",
       width,
       height,
-      fit: "cover",
-      errorWidget: stac.container({
-        width,
-        height,
-        color: "#F5F5F5",
-        child: stac.center({
-          child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 24 }),
-        }),
+      fit: "cover"
+    })
+  });
+
+// REFACTORED: Wishlist Heart (Pure SDUI Logic)
+const _wishlistHeart = ({ productId, action }) => {
+  const stateKey = `wishlist_${productId}`;
+  
+  return stac.reactiveBuilder({
+    listenTo: [stateKey],
+    child: stac.inkWell({
+      action,
+      child: stac.container({
+        padding: [6, 6, 6, 6],
+        decoration: { color: "#E6FFFFFF", shape: "circle" },
+        // PURE SDUI: Evaluate the state key securely 
+        child: stac.conditionalWidget({
+          stateKey: stateKey,
+          expectedValue: true, // If wishlist_{id} == true
+          defaultValue: false,
+          onTrue: stac.icon({ icon: "favorite", color: "#D32F2F", size: 18 }),
+          onFalse: stac.icon({ icon: "favorite_border", color: "#757575", size: 18 })
+        })
       }),
     }),
   });
+};
 
-/**
- * _cartQtyButton — canonical cart quantity button (native parser).
- * Used in product cards, product page bottom bar, and cart items.
- * Always backed by the same ProductState so qty is in-sync everywhere.
- */
-const _cartQtyButton = ({
-  productId,
-  initialQty = 0,
-  isFullWidth = false,
-  addAction,
-  incrementAction,
-  decrementAction,
-  loadingColor = "#FFFFFF",
-}) => ({
-  type: "cart_qty_button",
-  productId: parseInt(productId),
-  initialQty,
-  isFullWidth,
-  addAction,
-  incrementAction,
-  decrementAction,
-  loadingColor,
-});
-
-/**
- * _wishlistHeart — canonical wishlist toggle (native parser).
- * Used in product cards and product page bottom bar.
- */
-const _wishlistHeart = ({ productId, isWishlisted, action }) => ({
-  type: "wishlist_heart",
-  productId: parseInt(productId),
-  isWishlisted,
-  action,
-});
-
+// REFACTORED: Cart Quantity Button (Pure SDUI Logic)
+const _cartQtyButton = ({ productId, addAction, incrementAction, decrementAction }) => {
+  const stateKey = `cart_qty_${productId}`;
+  
+  return stac.reactiveBuilder({
+    listenTo: [stateKey],
+    child: stac.container({
+      child: stac.conditionalWidget({
+        stateKey: stateKey,
+        expectedValue: 0, // If cart_qty_{id} == 0
+        defaultValue: 0,
+        
+        // onTrue means Quantity is 0 -> SHOW ADD BUTTON
+        onTrue: stac.asyncButton({ 
+          action: addAction, 
+          child: stac.container({
+            height: 36, width: 36,
+            decoration: { color: Brand.primary, borderRadius: 18 },
+            child: stac.center({ child: stac.icon({ icon: "add", color: "#FFFFFF", size: 20 }) })
+          })
+        }),
+        
+        // onFalse means Quantity is > 0 -> SHOW STEPPER
+        onFalse: stac.container({
+          height: 36,
+          decoration: { color: Brand.primary, borderRadius: 18 },
+          child: stac.row({ 
+            mainAxisSize: "min",
+            children: [
+              stac.asyncButton({ action: decrementAction, child: stac.icon({ icon: "remove", color: "#FFFFFF", size: 16 }) }),
+              // We can still use placeholders for direct value injection!
+              stac.padding({ horizontal: 8, child: stac.text(`{{${stateKey}}}`, { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold" }) }) }),
+              stac.asyncButton({ action: incrementAction, child: stac.icon({ icon: "add", color: "#FFFFFF", size: 16 }) }),
+            ]
+          })
+        })
+      })
+    })
+  });
+};
+const _normalizeUrl = (url) => {
+  if (!url) return "https://via.placeholder.com/400x500.png?text=No+Image";
+  if (url.startsWith("http")) return url;
+  
+  // If it's a relative path from your DB, prepend your exact server IP
+  return url.startsWith("/") 
+    ? `http://192.168.0.20:7001${url}` 
+    : `http://192.168.0.20:7001/${url}`;
+};
 // ==========================================
 // 3. PAGE-LEVEL COMPONENTS
 // These compose w.* primitives and _shared* into full layout blocks.
@@ -190,272 +220,114 @@ export const ui = {
     });
   },
 
+  
   // ─── PRODUCT CARD ────────────────────────────────────────────────
   // Overflow-safe: image section uses AspectRatio, not Expanded.
   // Text section is constrained so nothing escapes the card bounds.
   // The cart_qty_button is rendered via the native parser (local state).
-  productCard: ({
-    id,
-    title,
-    subtitle = "",
-    price,
-    originalPrice = null,
-    images = [],
-    isOnSale = false,
-    isWishlisted = false,
-    rating = "4.8",
-    reviewCount = 0,
-    initialQty = 0,
-    onCardTap,
-    onAddToCartTap,
-    onWishlistTap,
-    onIncrementTap,
-    onDecrementTap,
+productCard: ({
+    id, title, subtitle = "", price, originalPrice = null, images = [],
+    isOnSale = false, isWishlisted = false, rating = "4.8", reviewCount = 0, initialQty = 0,
+    onCardTap, onAddToCartTap, onWishlistTap, onIncrementTap, onDecrementTap,
     heroTag = `product_image_${id}`,
   }) => {
-    // 1. Resolve media
-    const mediaArray =
-      Array.isArray(images) && images.length > 0
-        ? images
-        : [{ url: "https://via.placeholder.com/400x500", mediaType: "image" }];
+    
+    // 🔥 1. ULTRA-SAFE DATA PARSING 
+    let resolvedUrl = "https://picsum.photos/400/175"; 
+    let isVideo = false;
 
-    const videoItem = mediaArray.find((m) => {
-      const type = m.mediaType || "";
-      const url = typeof m === "string" ? m : m.url;
-      return type === "video" || (typeof url === "string" && url.endsWith(".mp4"));
-    });
+    if (Array.isArray(images) && images.length > 0) {
+      const firstMedia = images[0];
+      if (typeof firstMedia === "string") {
+        resolvedUrl = firstMedia;
+      } else if (firstMedia && typeof firstMedia === "object") {
+        resolvedUrl = firstMedia.url || firstMedia.mediaUrl || firstMedia.src || resolvedUrl;
+        isVideo = firstMedia.mediaType === "video" || resolvedUrl.endsWith(".mp4");
+      }
+    }
 
-    const hasVideo = !!videoItem;
-    const primaryMedia = hasVideo ? videoItem : mediaArray[0];
-    const mediaUrl =
-      typeof primaryMedia === "string" ? primaryMedia : primaryMedia.url;
+    // IP address fix for relative URLs
+    if (typeof resolvedUrl === "string" && resolvedUrl.startsWith("/")) {
+      resolvedUrl = `http://192.168.0.20:7001${resolvedUrl}`; 
+    }
 
-    // 2. Build media widget (video or hero-wrapped image)
-    const rawMediaWidget = hasVideo
-      ? stac.video({
-          src: mediaUrl,
-          autoPlay: true,
-          loop: true,
-          muted: true,
-          showControls: false,
-          fit: "cover",
-        })
-      : stac.hero({
-          tag: heroTag,
-          child: stac.image({
-            src: mediaUrl,
-            fit: "cover",
-            errorWidget: stac.container({
-              color: "#F5F5F5",
-              child: stac.center({
-                child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 28 }),
-              }),
-            }),
-          }),
+    // 🔥 2. EXPLICIT SIZING 
+    const rawMediaWidget = isVideo
+      ? stac.video({ src: resolvedUrl, autoPlay: true, loop: true, muted: true, showControls: false, fit: "cover", width: 500, height: 175 })
+      : stac.image({ 
+          src: resolvedUrl, 
+          imageType: "network", // Forces Stac to recognize it as a remote URL
+          fit: "cover", 
+          width: 500, 
+          height: 175,
+          errorWidget: stac.container({
+            color: "#F5F5F5",
+            child: stac.center({ child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 28 }) }),
+          })
         });
 
-    // 3. Image section — fixed height so overflow is predictable in every
-    //    context (horizontal scroll, 2-col grid, 4-col grid). AspectRatio
-    //    was width-dependent: wider grid cells → taller image → details overflow.
-    const imageSection = stac.sizedBox({
+    // 🔥 3. THE WORKING LAYOUT
+    const imageSection = stac.container({
       height: 175,
+      width: 500,
+      color: "#F5F5F5", 
       child: stac.stack({
         children: [
-          // Full-bleed media
-          stac.positioned({
-            top: 0, bottom: 0, left: 0, right: 0,
-            child: stac.clipRRect({
-              borderRadius: {
-                topLeft: Brand.radiusMedium,
-                topRight: Brand.radiusMedium,
-                bottomLeft: 0,
-                bottomRight: 0,
-              },
-              child: rawMediaWidget,
-            }),
-          }),
-
-          // SALE badge
-          ...(isOnSale
-            ? [
-                stac.positioned({
-                  top: 8,
-                  left: 8,
-                  child: stac.container({
-                    padding: [8, 4, 8, 4],
-                    decoration: { color: Brand.error, borderRadius: 10 },
-                    child: stac.text("SALE", {
-                      style: stac.textStyle({
-                        color: "#FFFFFF",
-                        fontSize: 9,
-                        fontWeight: "bold",
-                        letterSpacing: 0.8,
-                      }),
-                    }),
-                  }),
-                }),
-              ]
-            : []),
-
-          // Wishlist button (native parser — syncs with product page)
-          stac.positioned({
-            top: 6,
-            right: 6,
-            child: _wishlistHeart({
-              productId: id,
-              isWishlisted,
-              action: onWishlistTap,
-            }),
-          }),
+          rawMediaWidget, // No Positioned wrapper!
+          ...(isOnSale ? [ stac.positioned({ top: 8, left: 8, child: stac.container({ padding: [8, 4, 8, 4], decoration: { color: Brand.error, borderRadius: 10 }, child: stac.text("SALE", { style: stac.textStyle({ color: "#FFFFFF", fontSize: 9, fontWeight: "bold", letterSpacing: 0.8 }) }) }) }) ] : []),
+          stac.positioned({ top: 6, right: 6, child: _wishlistHeart({ productId: id, action: onWishlistTap }) }),
         ],
       }),
     });
 
-    // 4. Text + cart section
-const detailsSection = stac.expanded({
-  child: stac.padding({
-    left: 10,
-    right: 10,
-    top: 8,
-    bottom: 12, // Provides breathing room to prevent edge-touching overflows
-    child: stac.column({
-      crossAxisAlignment: "start",
-      mainAxisAlignment: "spaceBetween", // Pushes title group UP and price group DOWN
-      children: [
-        // TOP GROUP: Subtitle and Title
-        stac.column({
-          crossAxisAlignment: "start",
-          mainAxisSize: "min",
+    // 🔥 4. DETAILS SECTION (With Reactive Cart Qty)
+    const detailsSection = stac.expanded({
+      child: stac.padding({
+        left: 10, right: 10, top: 8, bottom: 12,
+        child: stac.column({
+          crossAxisAlignment: "start", mainAxisAlignment: "spaceBetween",
           children: [
-            // Subtitle + rating row
-            stac.row({
-              mainAxisAlignment: "spaceBetween",
-              crossAxisAlignment: "center",
+            stac.column({
+              crossAxisAlignment: "start", mainAxisSize: "min",
               children: [
-                stac.expanded({
-                  child: stac.text(subtitle, {
-                    maxLines: 1,
-                    overflow: "ellipsis",
-                    style: stac.textStyle({
-                      fontSize: 9,
-                      color: Brand.textSecondary,
-                      fontWeight: "bold",
-                      letterSpacing: 0.5,
-                    }),
-                  }),
+                stac.row({
+                  mainAxisAlignment: "spaceBetween", crossAxisAlignment: "center",
+                  children: [
+                    stac.expanded({ child: stac.text(subtitle, { maxLines: 1, overflow: "ellipsis", style: stac.textStyle({ fontSize: 9, color: Brand.textSecondary, fontWeight: "bold", letterSpacing: 0.5 }) }) }),
+                    ...(reviewCount > 0 ? [ stac.row({ mainAxisSize: "min", children: [ stac.svg({ src: AppIcons.STAR, color: "#FFC107", width: 10, height: 10 }), stac.sizedBox({ width: 2 }), stac.text(`${rating}`, { style: stac.textStyle({ fontSize: 9, color: Brand.textSecondary }) }) ] }) ] : []),
+                  ],
                 }),
-                ...(reviewCount > 0
-                  ? [
-                      stac.row({
-                        mainAxisSize: "min",
-                        children: [
-                          stac.svg({ src: AppIcons.STAR, color: "#FFC107", width: 10, height: 10 }),
-                          stac.sizedBox({ width: 2 }),
-                          stac.text(`${rating}`, {
-                            style: stac.textStyle({ fontSize: 9, color: Brand.textSecondary }),
-                          }),
-                        ],
-                      }),
-                    ]
-                  : []),
+                stac.sizedBox({ height: 4 }),
+                stac.text(title, { maxLines: 2, overflow: "ellipsis", style: stac.textStyle({ fontSize: 13, fontWeight: "w500", color: Brand.textPrimary, height: 1.2 }) }),
               ],
             }),
-
-            stac.sizedBox({ height: 4 }),
-
-            // Product title — max 2 lines
-            stac.text(title, {
-              maxLines: 2,
-              overflow: "ellipsis",
-              style: stac.textStyle({
-                fontSize: 13,
-                fontWeight: "w500",
-                color: Brand.textPrimary,
-                height: 1.2,
-              }),
-            }),
-          ],
-        }),
-
-        // BOTTOM GROUP: Price + add-to-cart row
-        stac.row({
-          mainAxisAlignment: "spaceBetween",
-          crossAxisAlignment: "center",
-          children: [
-            // Price column
-            stac.expanded({
-              child: stac.column({
-                crossAxisAlignment: "start",
-                mainAxisSize: "min",
-                children: [
-                
-                  ...(originalPrice
-                    ? [
-                        stac.text(originalPrice, {
-                          maxLines: 1,
-                          overflow: "ellipsis",
-                          style: stac.textStyle({
-                            fontSize: 10,
-                            color: Brand.textSecondary,
-                            decoration: "lineThrough",
-                          }),
-                        }),
-                        stac.sizedBox({ height: 2 }),
-                      ]
-                    : []),
-                  stac.text(price, {
-                    maxLines: 1,
-                    overflow: "ellipsis",
-                    style: stac.textStyle({
-                      fontSize: 14,
-                      fontWeight: "w700",
-                      color: Brand.textPrimary,
-                    }),
+            stac.row({
+              mainAxisAlignment: "spaceBetween", crossAxisAlignment: "center",
+              children: [
+                stac.expanded({
+                  child: stac.column({
+                    crossAxisAlignment: "start", mainAxisSize: "min",
+                    children: [
+                      ...(originalPrice ? [ stac.text(originalPrice, { maxLines: 1, overflow: "ellipsis", style: stac.textStyle({ fontSize: 10, color: Brand.textSecondary, decoration: "lineThrough" }) }), stac.sizedBox({ height: 2 }) ] : []),
+                      stac.text(price, { maxLines: 1, overflow: "ellipsis", style: stac.textStyle({ fontSize: 14, fontWeight: "w700", color: Brand.textPrimary }) }),
+                    ],
                   }),
-                ],
-              }),
-            }),
-
-            stac.sizedBox({ width: 4 }),
-
-            // Native Quantity Button
-            _cartQtyButton({
-              productId: id,
-              initialQty,
-              isFullWidth: false,
-              addAction: onAddToCartTap,
-              incrementAction: onIncrementTap,
-              decrementAction: onDecrementTap,
+                }),
+                stac.sizedBox({ width: 4 }),
+                _cartQtyButton({ productId: id, addAction: onAddToCartTap, incrementAction: onIncrementTap, decrementAction: onDecrementTap }),
+              ],
             }),
           ],
         }),
-      ],
-    }),
-  }),
-});
+      }),
+    });
 
     return stac.inkWell({
       action: onCardTap,
       child: stac.container({
         clipBehavior: "antiAlias",
-        decoration: {
-          color: Brand.surface,
-          borderRadius: Brand.radiusMedium,
-          border: { color: Brand.divider, width: 1 },
-          boxShadow: [
-            {
-              color: "#0000000A",
-              blurRadius: 8,
-              spreadRadius: 0,
-              offset: { dx: 0, dy: 2 },
-            },
-          ],
-        },
-        child: stac.column({
-          crossAxisAlignment: "stretch",
-          mainAxisSize: "max",
-          children: [imageSection, detailsSection],
-        }),
+        decoration: { color: Brand.surface, borderRadius: Brand.radiusMedium, border: { color: Brand.divider, width: 1 }, boxShadow: [ { color: "#0000000A", blurRadius: 8, spreadRadius: 0, offset: { dx: 0, dy: 2 } } ] },
+        child: stac.column({ crossAxisAlignment: "stretch", mainAxisSize: "max", children: [imageSection, detailsSection] }),
       }),
     });
   },
