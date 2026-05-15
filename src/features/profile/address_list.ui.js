@@ -2,6 +2,7 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class AddressListUI {
 
@@ -14,7 +15,7 @@ export class AddressListUI {
         actions: [
           {
             icon: AppIcons.PLUS,
-            action: stac.navigate("/profile/addresses/add", "push"),
+            action: stac.navigate(Endpoints.PROFILE.ADDRESS_ADD, "push"),
           },
         ],
       }),
@@ -26,7 +27,7 @@ export class AddressListUI {
           }),
       floatingActionButton: {
         type: "floatingActionButton",
-        onPressed: stac.navigate("/profile/addresses/add", "push"),
+        onPressed: stac.navigate(Endpoints.PROFILE.ADDRESS_ADD, "push"),
         child: stac.icon({ icon: "add", color: "#FFFFFF", size: 24 }),
         backgroundColor: Brand.primary,
       },
@@ -157,7 +158,7 @@ export class AddressListUI {
               children: [
                 // Edit
                 stac.inkWell({
-                  action: stac.navigate(`/profile/addresses/${addr.id}/edit`, "push"),
+                  action: stac.navigate(Endpoints.PROFILE.ADDRESS_EDIT(addr.id), "push"),
                   child: stac.container({
                     padding: [12, 8, 12, 8],
                     decoration: {
@@ -185,9 +186,9 @@ export class AddressListUI {
                 // Delete
                 stac.inkWell({
                   action: stac.apiRequest({
-                    url: `/profile/addresses/${addr.id}/delete`,
+                    url: Endpoints.PROFILE.ADDRESS_DELETE(addr.id),
                     method: "POST",
-                    onSuccess: stac.navigate("/profile/addresses", "replace"),
+                    onSuccess: stac.navigate(Endpoints.PROFILE.ADDRESSES, "replace"),
                     onError: stac.showToast("Delete failed.", {
                       backgroundColor: Brand.error,
                       textColor: "#FFFFFF",
@@ -247,7 +248,7 @@ export class AddressListUI {
             left: 48, right: 48,
             child: w.button({
               text: "Add Address",
-              action: stac.navigate("/profile/addresses/add", "push"),
+              action: stac.navigate(Endpoints.PROFILE.ADDRESS_ADD, "push"),
             }),
           }),
         ],

@@ -49,18 +49,40 @@ static async getDashboardUiPayload(user) {
     // ── THE FIX: Fetch user-specific data OUTSIDE the generic cache ──
     const userCartMap = {};
     const userWishlistSet = new Set();
+    let wishlistItems = [];
 
     if (user) {
       const [cartItems, wishlists] = await Promise.all([
-        prisma.cartItem.findMany({ where: { userId: user.id } }),
-        prisma.wishlist.findMany({ where: { userId: user.id } })
+        prisma.cartItem.findMany({ 
+          where: { 
+            userId: user.id,
+            product: { isActive: true }
+          } 
+        }),
+        prisma.wishlist.findMany({ 
+          where: { 
+            userId: user.id,
+            product: { isActive: true }
+          },
+          include: {
+            product: {
+              include: {
+                images: true,
+                category: true
+              }
+            }
+          }
+        })
       ]).catch(() => [[], []]);
 
       cartItems.forEach(c => { userCartMap[c.productId] = c.quantity; });
-      wishlists.forEach(w => { userWishlistSet.add(w.productId); });
+      wishlists.forEach(w => { 
+        userWishlistSet.add(w.productId); 
+      });
+      wishlistItems = wishlists;
     }
 
-    // Pass the truth maps down to the UI builder
-    return DashboardUI.buildDashboardUi(user, products, categories, banners, userCartMap, userWishlistSet);
+    // Pass the truth maps and full wishlist items down to the UI builder
+    return DashboardUI.buildDashboardUi(user, products, categories, banners, userCartMap, userWishlistSet, "mobile", wishlistItems);
   }
 }

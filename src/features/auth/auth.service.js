@@ -93,15 +93,15 @@ export class AuthService {
    * INTERNAL HELPER: Generates minimal JWTs and saves the refresh token
    */
   static async _generateAndSaveTokens(user) {
-    const accessPayload = { id: user.id, role: user.role };
-    const refreshPayload = { id: user.id, role: user.role };
+    const accessPayload = { id: user.id, role: user.role, email: user.email };
+    const refreshPayload = { id: user.id, role: user.role, email: user.email };
 
     const accessToken = generateAccessToken(accessPayload);
     const refreshToken = generateRefreshToken(refreshPayload);
 
     await AuthRepository.updateRefreshToken(user.id, refreshToken);
 
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, user };
   }
 }
 

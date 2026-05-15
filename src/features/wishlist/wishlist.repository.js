@@ -3,7 +3,12 @@ import prisma from "../../core/prisma/client.js";
 export class WishlistRepository {
   static async getByUserId(userId) {
     return prisma.wishlist.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        product: {
+          isActive: true
+        }
+      },
       include: {
         product: {
           include: {

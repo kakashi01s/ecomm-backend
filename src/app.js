@@ -25,6 +25,7 @@ import { router as utilityRoutes } from "./features/app/utilities/utilities.rout
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
 import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
+import { Endpoints, getMountPath } from "./core/constants/apiEndpoints.js";
 
 
 import { AuthController } from "./features/auth/auth.controller.js";
@@ -90,18 +91,17 @@ app.use(extractSduiContext);
 // ============================================================================
 // 6. FEATURE ROUTES
 // ============================================================================
-app.use("/api/auth", authRoutes);
-app.use("/api/s3", s3Routes);
-app.use("/api/product", productRoutes);
-app.use("/api/v1/categories", categoryRoutes);
+app.use(getMountPath(Endpoints.AUTH.BASE), authRoutes);
+app.use(getMountPath(Endpoints.S3.BASE), s3Routes);
+app.use(getMountPath(Endpoints.PRODUCT.BASE), productRoutes);
+app.use(getMountPath(Endpoints.CATEGORY.BASE), categoryRoutes);
 console.log("Registering Cart Routes...");
-app.use("/api/cart", cartRoutes);
-app.use("/api/dashboard", dashBoardRoutes); // Protected route with optional auth for SDUI context
-app.use("/api/wishlist", wishlistRoutes);  // toggle, remove, move-to-cart
-app.use("/wishlist", wishlistRoutes); 
-app.use("/api/profile", profileRoutes); // Public profile routes (no auth required)
-app.use("/api/search", searchRoutes); // Public search routes (no auth required)
-app.use("/api/utilities", utilityRoutes); // For pincode update
+app.use(getMountPath(Endpoints.CART.BASE), cartRoutes);
+app.use(getMountPath(Endpoints.DASHBOARD.BASE), dashBoardRoutes);
+app.use(getMountPath(Endpoints.WISHLIST.BASE), wishlistRoutes);
+app.use(getMountPath(Endpoints.PROFILE.BASE), profileRoutes);
+app.use(getMountPath(Endpoints.SEARCH.BASE), searchRoutes);
+app.use(getMountPath(Endpoints.UTILITIES.BASE), utilityRoutes);
 // ============================================================================
 // 7. ERROR HANDLING & HEALTH CHECKS
 // ============================================================================

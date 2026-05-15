@@ -3,6 +3,8 @@ import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
 
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
+
 export class AddressFormUI {
 
   /**
@@ -12,8 +14,8 @@ export class AddressFormUI {
   static build(address = null) {
     const isEdit = !!address;
     const apiUrl = isEdit
-      ? `/profile/addresses/${address.id}/edit`
-      : "/profile/addresses/add";
+      ? Endpoints.PROFILE.ADDRESS_EDIT(address.id)
+      : Endpoints.PROFILE.ADDRESS_ADD;
 
     return stac.scaffold({
       backgroundColor: Brand.background,
@@ -155,7 +157,7 @@ export class AddressFormUI {
                       {
                         backgroundColor: Brand.success,
                         textColor: "#FFFFFF",
-                        nextAction: stac.navigate("/profile/addresses", "replace"),
+                        nextAction: stac.navigate(Endpoints.PROFILE.ADDRESSES, "replace"),
                       }
                     ),
                     onError: stac.showToast("Failed. Please try again.", {

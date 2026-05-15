@@ -3,6 +3,7 @@ import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AuthUI } from "../auth/auth.ui.js";
 import { AppIcons } from "../../core/constants/icons.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class SearchResultsUI {
   static buildResultsPage({ query, products, totalCount, isGuest, userCartMap, userWishlistSet, page, hasMore }) {
@@ -18,9 +19,9 @@ export class SearchResultsUI {
         isDashboard: false,
         
         actions: [
-        { icon: AppIcons.SEARCH, action: stac.navigate("/search"), badgeType: "search" },
-        { icon: AppIcons.HEART, action: stac.navigate("/wishlist"), badgeType: "wishlist" },
-        { icon: AppIcons.CART,  action: stac.navigate("/cart"),     badgeType: "cart" },
+        { icon: AppIcons.SEARCH, action: stac.navigate(Endpoints.SEARCH.BASE), badgeType: "search" },
+        { icon: AppIcons.HEART, action: stac.navigate(Endpoints.WISHLIST.BASE), badgeType: "wishlist" },
+        { icon: AppIcons.CART,  action: stac.navigate(Endpoints.CART.BASE),     badgeType: "cart" },
         ],
       }
     ),
@@ -28,11 +29,11 @@ export class SearchResultsUI {
       // 2. Body wrapped in stac.form so cart API requests can resolve context
       body: isEmpty
         ? ui.emptyState({
-            icon: "search_off",
+            icon: AppIcons.SEARCH,
             title: "No results found",
             subtitle: `We couldn't find anything for "${query}". Try another keyword.`,
             buttonText: "Browse Categories",
-            buttonAction: stac.navigate("/dashboard", "replaceAll"),
+            buttonAction: stac.navigate(Endpoints.DASHBOARD.BASE, "replaceAll"),
           })
         : stac.form({
             child: stac.customScrollView({
@@ -97,7 +98,7 @@ export class SearchResultsUI {
                               text: "Load More",
                               variant: "outline",
                               // SDUI Pagination: Replace the page with the next limits
-                              action: stac.navigate(`/search/results?q=${encodeURIComponent(query)}&page=${page + 1}`, "replace"),
+                              action: stac.navigate(Endpoints.SEARCH.RESULTS(`${encodeURIComponent(query)}&page=${page + 1}`), "replace"),
                             }),
                           }),
                         })
@@ -147,25 +148,25 @@ static _productCards(products, isGuest, userCartMap, userWishlistSet, heroContex
         
         heroTag: `search_image_${p.id}_${heroContext}`,
         
-        onCardTap: stac.navigate(`/product/${p.id}`),
+        onCardTap: stac.navigate(Endpoints.PRODUCT.DETAILS(p.id)),
         
         onWishlistTap: isGuest 
           ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet")))
-          : stac.apiRequest({ url: `/wishlist/toggle`, method: "POST", body: { productId: p.id } }),
+          : stac.apiRequest({ url: Endpoints.WISHLIST.TOGGLE, method: "POST", body: { productId: p.id } }),
             
         onAddToCartTap: isGuest 
           ? stac.showBottomSheet(AuthUI.asBottomSheet(AuthUI.emailForm("bottomSheet"))) 
           : stac.apiRequest({
-              url: `/cart/add`, method: "POST", body: { productId: p.id, quantity: 1 },
+              url: Endpoints.CART.ADD, method: "POST", body: { productId: p.id, quantity: 1 },
               onSuccess: stac.showToast("Added to cart! 🛒"),
             }),
 
         onIncrementTap: isGuest ? null : stac.apiRequest({
-          url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "increment", pincode: "302001" },
+          url: Endpoints.CART.UPDATE, method: "PUT", body: { productId: p.id, action: "increment", pincode: "{{activePincode}}" },
         }),
             
         onDecrementTap: isGuest ? null : stac.apiRequest({
-          url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "decrement", pincode: "302001" },
+          url: Endpoints.CART.UPDATE, method: "PUT", body: { productId: p.id, action: "decrement", pincode: "{{activePincode}}" },
         })
       });
     });

@@ -74,4 +74,87 @@ export class CategoryRepository {
     });
     return count > 0; 
     }
+
+    /**
+     * getCategoryWithProducts
+     * Fetches products for a category with optional sorting and filtering.
+     */
+    static async getCategoryWithProducts(categoryId, { sort, minPrice, maxPrice, colors, sizes }) {
+        const where = {
+            categoryId: parseInt(categoryId),
+            isActive: true,
+        };
+
+        // Price Filtering
+        const parsedMin = minPrice !== undefined && minPrice !== null ? parseFloat(minPrice) : NaN;
+        const parsedMax = maxPrice !== undefined && maxPrice !== null ? parseFloat(maxPrice) : NaN;
+
+        if (!isNaN(parsedMin) || !isNaN(parsedMax)) {
+            where.price = {};
+            if (!isNaN(parsedMin)) where.price.gte = parsedMin;
+            if (!isNaN(parsedMax)) where.price.lte = parsedMax;
+        }
+
+        // Variant Filtering (Color/Size)
+        if ((colors && colors.length > 0) || (sizes && sizes.length > 0)) {
+            where.variants = {
+                some: {
+                    ...(colors && colors.length > 0 ? { color: { in: colors } } : {}),
+                    ...(sizes && sizes.length > 0 ? { size: { in: sizes } } : {}),
+                }
+            };
+        }
+
+        // Sorting Logic
+        let orderBy = { createdAt: 'desc' };
+        if (sort === 'price_asc') orderBy = { price: 'asc' };
+        if (sort === 'price_desc') orderBy = { price: 'desc' };
+        if (sort === 'newest') orderBy = { createdAt: 'desc' };
+
+        return prisma.category.findUnique({
+            where: { id: parseInt(categoryId) },
+            include: {
+                products: {
+                    where,
+                    orderBy,
+                    include: {
+                        images: true,
+                        category: true,
+                        variants: true,
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * getDynamicFilters
+     * Gathers all available colors, sizes, and price bounds for a category.
+     */
+    static async getDynamicFilters(categoryId) {
+        const catId = parseInt(categoryId);
+
+        const [priceBounds, variants] = await Promise.all([
+            prisma.product.aggregate({
+                where: { categoryId: catId, isActive: true },
+                _min: { price: true },
+                _max: { price: true }
+            }),
+            prisma.productVariant.findMany({
+                where: { product: { categoryId: catId, isActive: true } },
+                select: { color: true, size: true },
+                distinct: ['color', 'size']
+            })
+        ]);
+
+        const colors = [...new Set(variants.map(v => v.color).filter(Boolean))];
+        const sizes = [...new Set(variants.map(v => v.size).filter(Boolean))];
+
+        return {
+            minPrice: priceBounds._min.price || 0,
+            maxPrice: priceBounds._max.price || 0,
+            colors: colors.sort(),
+            sizes: sizes.sort()
+        };
+    }
 }

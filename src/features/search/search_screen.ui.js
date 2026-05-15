@@ -2,6 +2,7 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { ui, Brand } from "../../core/sdui/components.js";
 import { AppIcons } from "../../core/constants/icons.js";
 import { w } from "../../core/sdui/widgets.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class SearchScreenUI {
   static buildSearchPage(query = "", suggestions = []) {
@@ -49,7 +50,7 @@ export class SearchScreenUI {
   static _suggestionTile(item) {
     return stac.inkWell({
       // Pushing to results creates the chain!
-      action: stac.navigate(`/search/results?q=${encodeURIComponent(item.name)}`, "push"),
+      action: stac.navigate(Endpoints.SEARCH.RESULTS(encodeURIComponent(item.name)), "push"),
       child: stac.container({
         padding: [0, 16, 0, 16],
         decoration: { border: { bottom: { color: Brand.divider, width: 1 } } },
@@ -64,7 +65,7 @@ export class SearchScreenUI {
               : stac.container({
                   width: 40, height: 40,
                   decoration: { color: Brand.surface, borderRadius: 8, border: { color: Brand.divider, width: 1 } },
-                  child: stac.center({ child: stac.icon({ icon: "search", color: Brand.textSecondary, size: 20 }) })
+                  child: stac.center({ child: stac.svg({ src: AppIcons.SEARCH, color: Brand.textSecondary, width: 20, height: 20 }) })
                 }),
             
             stac.sizedBox({ width: 16 }),
@@ -89,7 +90,7 @@ export class SearchScreenUI {
             }),
             
             // Trailing Arrow
-            stac.icon({ icon: "north_west", color: "#CCCCCC", size: 16 })
+            stac.svg({ src: AppIcons.NEXT, color: "#CCCCCC", width: 16, height: 16 })
           ]
         })
       })
@@ -119,11 +120,11 @@ export class SearchScreenUI {
           type: "webScrollRow", // Uses your horizontal scroller
           padding: [0, 0, 0, 0],
           children: [
-            ui.categoryChip({ title: "Gold Rings", action: stac.navigate("/search/results?q=Gold Rings", "push") }),
+            ui.categoryChip({ title: "Gold Rings", action: stac.navigate(Endpoints.SEARCH.RESULTS("Gold Rings"), "push") }),
             stac.sizedBox({ width: 8 }),
-            ui.categoryChip({ title: "Diamond Necklaces", action: stac.navigate("/search/results?q=Diamond Necklaces", "push") }),
+            ui.categoryChip({ title: "Diamond Necklaces", action: stac.navigate(Endpoints.SEARCH.RESULTS("Diamond Necklaces"), "push") }),
             stac.sizedBox({ width: 8 }),
-            ui.categoryChip({ title: "Engagement", action: stac.navigate("/search/results?q=Engagement", "push") }),
+            ui.categoryChip({ title: "Engagement", action: stac.navigate(Endpoints.SEARCH.RESULTS("Engagement"), "push") }),
           ]
         }
       ]

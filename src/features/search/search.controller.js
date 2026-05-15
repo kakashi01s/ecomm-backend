@@ -1,10 +1,10 @@
 import { SearchRepository } from "./search.repository.js";
 import { SearchResultsUI } from "./search_results.ui.js";
-import { CartController } from "../cart/cart.controller.js";
 import { AsyncHandler } from "../../utils/asyncHandler.js";
 import prisma from "../../core/prisma/client.js";
 import { SearchScreenUI } from "./search_screen.ui.js";
 import { stac } from "../../core/sdui/StacWidgets.js";
+import { GlobalStateHelper } from "../app/utilities/globalState.util.js";
 
 
 export class SearchController {
@@ -72,8 +72,8 @@ static liveSearch = AsyncHandler(async (req, res) => {
     // This allows seamless appending without needing a native array-concat handler.
     const takeAmount = page * limit;
 
-    const userId = req.user?.id;
-    const isGuest = !userId;
+    const user = req.user;
+    const isGuest = !user;
 
     const searchCondition = {
       isActive: true,
@@ -106,6 +106,7 @@ static liveSearch = AsyncHandler(async (req, res) => {
     const userWishlistSet = new Set();
 
     if (!isGuest) {
+      const userId = user.id;
       const [cartItems, wishlistItems] = await Promise.all([
         prisma.cartItem.findMany({ where: { userId }, select: { productId: true, quantity: true } }),
         prisma.wishlist.findMany({ where: { userId }, select: { productId: true } })
@@ -129,9 +130,9 @@ static liveSearch = AsyncHandler(async (req, res) => {
     });
 
     // 4. Attach Meta (Forces native AppBar badges to instantly show accurate values)
-    const meta = userId 
-      ? await CartController.getGlobalCounts(userId) 
-      : { cartCount: 0, wishlistCount: 0 };
+    const meta = user 
+      ? await GlobalStateHelper.getGlobalMeta(user, req.headers) 
+      : GlobalStateHelper.baseMeta();
 
     return res.status(200).json({ ui, meta });
   });

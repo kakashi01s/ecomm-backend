@@ -4,6 +4,7 @@ import { EditProfileUI } from "./edit_profile.ui.js";
 import { AddressListUI } from "./address_list.ui.js";
 import { AddressFormUI } from "./address_form.ui.js";
 import { OrdersListUI } from "./orders_list.ui.js";
+import { GlobalStateHelper } from "../app/utilities/globalState.util.js";
 
 export class ProfileController {
 
@@ -64,10 +65,18 @@ static async updatePincode(req, res) {
 
       // 4. Return it exactly as 'activePincode' so Flutter catches it
       // Standard Express res.json WILL preserve the null value here.
+      const meta = req.user 
+        ? await GlobalStateHelper.getGlobalMeta(req.user, req.headers)
+        : { ...GlobalStateHelper.baseMeta(), activePincode: finalPincode };
+
       return res.status(200).json({ 
         success: true, 
         message: finalPincode ? "Pincode updated" : "Pincode cleared",
-        meta: { activePincode: finalPincode } 
+        nextAction: {
+          actionType: "set_global_state",
+          mutations: { activePincode: finalPincode }
+        },
+        meta
       });
     } catch (e) {
       console.error("[PINCODE ERROR]", e);

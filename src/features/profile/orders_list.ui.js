@@ -2,6 +2,7 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 const STATUS_CONFIG = {
   PENDING:    { label: "Pending",     color: "#FF9800", bg: "#FFF3E0", icon: "hourglass_empty" },
@@ -52,7 +53,7 @@ export class OrdersListUI {
     });
 
     return stac.inkWell({
-      action: stac.navigate(`/orders/${order.id}`, "push"),
+      action: stac.navigate(Endpoints.ORDERS.DETAILS(order.id), "push"),
       child: stac.container({
         margin: [0, 0, 0, 14],
         decoration: {
@@ -241,7 +242,7 @@ export class OrdersListUI {
               left: 48, right: 48,
               child: w.button({
                 text: "Start Shopping",
-                action: stac.navigate("/", "replace"),
+                action: stac.navigate(Endpoints.DASHBOARD.BASE, "replace"),
               }),
             }),
           ],

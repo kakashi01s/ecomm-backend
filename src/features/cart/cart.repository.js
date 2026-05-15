@@ -35,7 +35,10 @@ export class CartRepository {
     static async getCartItems(userId) {
         return await prisma.cartItem.findMany({
             where: {
-                userId: parseInt(userId)
+                userId: parseInt(userId),
+                product: {
+                    isActive: true
+                }
             },
             include: {
                 product: {

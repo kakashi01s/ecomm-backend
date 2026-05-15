@@ -6,20 +6,37 @@ import { AuthRepository } from "./auth.repository.js";
 import { stac } from "../../core/sdui/StacWidgets.js";
 import { DashboardController } from "../app/dashboard/dashboard.controller.js";
 import { AuthUI } from "./auth.ui.js"; 
-import prisma from "../../core/prisma/client.js"; // <-- Added Prisma import
+import prisma from "../../core/prisma/client.js";
 import { GlobalStateHelper } from "../app/utilities/globalState.util.js";
+import { StateKeys } from "../../core/constants/stateKeys.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class AuthController {
 
 static async bootstrap(req, res) {
-    const user = req.user || null;
+    let user = req.user || null;
     const theme = { primaryColor: "#FF5722", scaffoldBackgroundColor: "#F5F5F5" };
 
     try {
+      // If we have a user ID from token, fetch full details for bootstrap
+      if (user && user.id) {
+        user = await AuthRepository.findById(user.id);
+      }
+
       const dashboardUi = await DashboardController.getDashboardUiPayload(user);
       
       // Fetch the unified global meta state!
       const metaState = await GlobalStateHelper.getGlobalMeta(user, req.headers);
+
+      // Pre-fill user state if they are already logged in
+      if (user) {
+        metaState[StateKeys.IS_LOGGED_IN] = true;
+        metaState[StateKeys.USER_NAME] = user.name || user.email.split("@")[0];
+        metaState[StateKeys.USER_EMAIL] = user.email;
+        metaState[StateKeys.USER_ID] = user.id;
+      } else {
+        metaState[StateKeys.IS_LOGGED_IN] = false;
+      }
 
       return res.json({ 
         theme, 
@@ -40,10 +57,17 @@ static async bootstrap(req, res) {
   }
 
   static async handleAuthAction(req, res) {
-      try {
-        //  Extract displayType so the server knows how to render the next step!
-        const { step, email, password, otp, displayType = "screen" } = req.body;
+      const { step, email, password, otp, displayType = "screen" } = req.body;
 
+      // Map steps to their specific UI error keys defined in AuthUI.js
+      const errorKeyMap = {
+        "identify_user": StateKeys.AUTH_EMAIL_ERROR,
+        "verify_password": StateKeys.AUTH_PASSWORD_ERROR,
+        "verify_otp": StateKeys.AUTH_OTP_ERROR
+      };
+      const errorKey = errorKeyMap[step];
+
+      try {
         if (step === "identify_user") {
           const authMethod = await AuthService.determineAuthMethod(email);
 
@@ -61,32 +85,53 @@ static async bootstrap(req, res) {
           }
         }
 
-        // When login is successful, "replace" root route to clear all dialogs/bottom sheets automatically!
         if (step === "verify_password") {
-          const tokens = await AuthService.verifyPassword(email, password);
+          const result = await AuthService.verifyPassword(email, password);
           return res.status(200).json({
-              nextAction: stac.manageSession("save", tokens, {
-          actionType: "server_navigate",
-          action: "seamless_replace", 
-          url: "/dashboard" 
-        })
+            nextAction: stac.manageSession("save", result, 
+              stac.setGlobalState({ 
+                [StateKeys.IS_LOGGED_IN]: true,
+                [StateKeys.USER_NAME]: result.user.name || result.user.email.split('@')[0],
+                [StateKeys.USER_EMAIL]: result.user.email,
+                [StateKeys.USER_ID]: result.user.id,
+                [StateKeys.AUTH_PASSWORD_ERROR]: "", 
+                [StateKeys.AUTH_OTP_ERROR]: "", 
+                [StateKeys.AUTH_EMAIL_ERROR]: "" 
+              }, 
+              stac.popThen(stac.navigate(null, "pop")))
+            )
           });
         }
 
         if (step === "verify_otp") {
-          const tokens = await AuthService.verifyOtp(email, otp);
+          const result = await AuthService.verifyOtp(email, otp);
           return res.status(200).json({
-              nextAction: stac.manageSession("save", tokens, {
-          actionType: "server_navigate",
-          action: "seamless_replace", 
-          url: "/dashboard" 
-        })
+            nextAction: stac.manageSession("save", result, 
+              stac.setGlobalState({ 
+                [StateKeys.IS_LOGGED_IN]: true,
+                [StateKeys.USER_NAME]: result.user.name || result.user.email.split('@')[0],
+                [StateKeys.USER_EMAIL]: result.user.email,
+                [StateKeys.USER_ID]: result.user.id,
+                [StateKeys.AUTH_PASSWORD_ERROR]: "", 
+                [StateKeys.AUTH_OTP_ERROR]: "", 
+                [StateKeys.AUTH_EMAIL_ERROR]: "" 
+              }, 
+              stac.popThen(stac.navigate(null, "pop")))
+            )
           });
         }
 
-        return res.status(400).json({ nextAction: stac.showToast("Unknown auth step") });
+        return res.status(400).json({ 
+          nextAction: stac.showToast("Unknown auth step") 
+        });
 
       } catch (err) {
+        // 🔥 NATIVE ERROR HANDLING: Update the UI state instead of just a toast
+        if (errorKey) {
+          return res.status(400).json({
+            nextAction: stac.setGlobalState({ [errorKey]: err.message })
+          });
+        }
         return res.status(400).json({ nextAction: stac.showToast(err.message) });
       }
   }
@@ -114,22 +159,16 @@ static async bootstrap(req, res) {
         return res.status(401).json(new ApiResponse(401, "Invalid refresh token", {}));
       }
 
-      const user = await AuthRepository.findByEmail(decoded.email || "");
+      const user = await AuthRepository.findById(decoded.id);
 
-      if (!user) {
-        const userById = await AuthRepository.updateUser(decoded.id, {});
-        if (!userById) {
-          return res.status(404).json(new ApiResponse(404, "User not found", {}));
-        }
-      }
-
-      if (user && user.refreshToken !== refreshToken) {
+      if (!user || (user.refreshToken !== refreshToken)) {
         return res.status(401).json(new ApiResponse(401, "Invalid refresh token", {}));
       }
 
       const newAccessToken = generateAccessToken({
-        id: decoded.id,
-        role: decoded.role,
+        id: user.id,
+        role: user.role,
+        email: user.email
       });
 
       res.status(200).json(new ApiResponse(200, { accessToken: newAccessToken }, "Access token refreshed successfully"));
@@ -158,7 +197,7 @@ static async bootstrap(req, res) {
       nextAction: stac.manageSession(
         "clear", 
         null, 
-        stac.navigate("/auth/bootstrap", "replaceAll")
+        stac.navigate(Endpoints.AUTH.BOOTSTRAP, "replaceAll")
       )
     });
   }
@@ -172,7 +211,7 @@ static async bootstrap(req, res) {
         return res.status(401).json(new ApiResponse(401, "Not authenticated", {}));
       }
 
-      const user = await AuthRepository.findByEmail(req.user.email || "");
+      const user = await AuthRepository.findById(userId);
 
       if (!user) {
         return res.status(404).json(new ApiResponse(404, "User not found", {}));

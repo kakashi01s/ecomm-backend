@@ -125,7 +125,7 @@ static async getProductById(req, res) {
       metaState[`wishlist_${id}`] = isProductWishlisted;
       metaState[`cart_qty_${id}`] = productCartQty;
 
-      const productUi = ProductUI.buildProductPage(product, isGuest, metaState.activePincode);
+      const productUi = ProductUI.buildProductPage(product, req.user, metaState.activePincode, isProductWishlisted);
       
       return res.json({ 
         ui: productUi, 

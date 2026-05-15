@@ -12,7 +12,7 @@ export const optionalAuthenticate = async (req, res, next) => {
         const decoded = verifyAccessToken(token);
 
         // if token is valid, attach user info to request object, else treat as guest
-        req.user = { id: decoded.id, role: decoded.role };
+        req.user = { id: decoded.id, role: decoded.role, email: decoded.email };
         next();
     } catch (err) {
         // Token galat hai tab bhi aage jaane do, hum use guest treat kar lenge

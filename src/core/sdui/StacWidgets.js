@@ -75,7 +75,7 @@ export const stac = {
   // 3. UI ELEMENTS & INPUTS
   // ==========================================
   text: (text, { style, textAlign, maxLines, overflow, textDirection } = {}) => ({
-    type: "text", data: text, style, textAlign, maxLines, overflow, textDirection
+    type: "text", data: String(text ?? ""), style, textAlign, maxLines, overflow, textDirection
   }),
 
   image: ({ src, imageType = "network", color, width, height, fit = "cover", errorWidget, alignment = "center", repeat = "noRepeat" }) => ({
@@ -109,8 +109,8 @@ export const stac = {
     obscureText: obscureText || false, keyboardType, onChanged, onSubmitted
   }),
 
-  checkbox: ({ id, title, value = false, activeColor, checkColor } = {}) => ({
-    type: "checkboxListTile", id, title: stac.text(title), value, activeColor, checkColor
+  checkbox: ({ id, value = false, activeColor, checkColor } = {}) => ({
+    type: "checkBox", id, value, activeColor, checkColor
   }),
 
   // ==========================================
@@ -170,8 +170,21 @@ export const stac = {
     type: "bottomNavigationBar", items: items || [], elevation, barType, bottomNavigationBarType: barType, backgroundColor, iconSize, selectedItemColor, unselectedItemColor, selectedFontSize, unselectedFontSize, showSelectedLabels, showUnselectedLabels
   }),
 
-  changeTab: (index) => ({ actionType: "change_tab_index", index: index }),
-  handleDashboardBack: (exitDialogAction) => ({ actionType: "handle_dashboard_back", exitDialogAction }),
+  changeTab: (index) => ({ 
+    actionType: "set_global_state", 
+    mutations: { dashboard_tab_index: index } 
+  }),
+  handleDashboardBack: (exitDialogAction) => ({ 
+    actionType: "conditional",
+    stateKey: "dashboard_tab_index",
+    expectedValue: 0,
+    defaultValue: 0,
+    onTrue: exitDialogAction,
+    onFalse: {
+      actionType: "set_global_state",
+      mutations: { dashboard_tab_index: 0 }
+    }
+  }),
   
   bottomNavigationBarItem: ({ icon, activeIcon, label, backgroundColor, tooltip }) => ({
     icon: typeof icon === 'string' ? { type: "icon", icon } : icon,
@@ -205,8 +218,8 @@ export const stac = {
     type: "svg_asset", src, isNetwork, color, width, height, rotationDegrees
   }),
 
-  badge: ({ child, count = 0, color = "#D32F2F", textColor = "#FFFFFF", size = 16, position = { top: 0, right: 0 } }) => ({
-    type: "badge", count, color, textColor, size, position, child,
+  badge: ({ child, count, color = "#D32F2F", textColor = "#FFFFFF", size = 16, position = { top: 0, right: 0 } }) => ({
+    type: "badge", count: count ?? undefined, color, textColor, size, position, child,
   }),
 
   video: ({ src, autoPlay = true, loop = true, muted = true, showControls = false, width, height, fit = "cover" }) => ({
@@ -253,13 +266,6 @@ export const stac = {
     nextAction
   }),
 
-  wrap: ({ children, direction="horizontal", spacing=0, runSpacing=0 }) => ({ type: "wrap", direction, spacing, runSpacing, children }),
-  opacity: ({ opacity, child }) => ({ type: "opacity", opacity, child }),
-  fittedBox: ({ fit = "contain", child }) => ({ type: "fittedBox", fit, child }),
-  flexible: ({ child, flex = 1, fit = "loose" }) => ({ type: "flexible", flex, fit, child }),
-  badge: ({ child, count, color, textColor, size = 16, position = { top: 0, right: 0 } }) => ({
-    type: "badge", count, color, textColor, size, position, child
-  }),
   conditionalAction: ({ stateKey, expectedValue, defaultValue, onTrue, onFalse }) => ({
     actionType: "conditional",
     stateKey,

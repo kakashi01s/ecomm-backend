@@ -5,6 +5,9 @@ import { AuthUI } from "../../auth/auth.ui.js";
 import { AppIcons } from "../../../core/constants/icons.js";
 import { CategoryUI } from "../../category/category.ui.js";
 import { ProfileUI } from "../../profile/profile.ui.js";
+import { WishlistUI } from "../../wishlist/wishlist.ui.js";
+import { StateKeys } from "../../../core/constants/stateKeys.js";
+import { Endpoints } from "../../../core/constants/apiEndpoints.js";
 
 export class DashboardUI {
 
@@ -16,12 +19,13 @@ export class DashboardUI {
     userCartMap     = {},
     userWishlistSet = new Set(),
     deviceType      = "mobile",
+    wishlistItems   = [],
   } = {}) {
     return {
       screens: [
         DashboardUI.buildDashboardUi(
           user, products, categories, banners,
-          userCartMap, userWishlistSet, deviceType
+          userCartMap, userWishlistSet, deviceType, wishlistItems
         ),
       ],
     };
@@ -29,13 +33,12 @@ export class DashboardUI {
 
   static buildDashboardUi(
     user, products, categories, banners,
-    userCartMap, userWishlistSet, deviceType = "mobile"
+    userCartMap, userWishlistSet, deviceType = "mobile", wishlistItems = []
   ) {
-    const isGuest = !user;
     const isDesktop = deviceType === "desktop";
 
-    const horizontalCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "horizontal");
-    const gridCards = DashboardUI._productCards(products, isGuest, userCartMap, userWishlistSet, "grid");
+    const horizontalCards = DashboardUI._productCards(products, userCartMap, userWishlistSet, "horizontal");
+    const gridCards = DashboardUI._productCards(products, userCartMap, userWishlistSet, "grid");
 
     const horizontalCardItems = horizontalCards.map((card) =>
       stac.padding({
@@ -56,15 +59,15 @@ export class DashboardUI {
             isDashboard: true,
             isSliver: true,
             pinned: true,
-            actions: DashboardUI._actionIcons(isGuest, user, isDesktop),
+            actions: DashboardUI._actionIcons(user, isDesktop),
           }),
 
           stac.sliverAppBar({
             pinned: true, floating: false, primary: false, automaticallyImplyLeading: false,
             backgroundColor: Brand.surface, elevation: 0, titleSpacing: 0,
             title: ui.nativeSearchOverlay({
-              apiEndpoint: "/search/suggestions",
-              onSubmitAction: stac.navigate("/search/results?q={{query}}", "push"),
+              apiEndpoint: Endpoints.SEARCH.SUGGESTIONS,
+              onSubmitAction: stac.navigate(Endpoints.SEARCH.RESULTS("{{query}}"), "push"),
               searchBarUi: w.textField({
                 id: "dashboard_search", hint: "Search rings, necklaces...",
                 decoration: {
@@ -84,7 +87,7 @@ export class DashboardUI {
                       borderRadius: 8,
                       child: stac.image({
                         src: "${_item.imageUrl}", width: 38, height: 38, fit: "cover",
-                        errorWidget: stac.container({ width: 38, height: 38, decoration: { color: Brand.background, borderRadius: 8 }, child: stac.center({ child: stac.icon({ icon: "search", color: Brand.textSecondary, size: 18 }) }) }),
+                        errorWidget: stac.container({ width: 38, height: 38, decoration: { color: Brand.background, borderRadius: 8 }, child: stac.center({ child: stac.svg({ src: AppIcons.SEARCH, color: Brand.textSecondary, width: 18, height: 18 }) }) }),
                       }),
                     }),
                     stac.sizedBox({ width: 12 }),
@@ -98,7 +101,7 @@ export class DashboardUI {
                         ],
                       }),
                     }),
-                    stac.padding({ right: 4, child: stac.icon({ icon: "north_west", size: 14, color: "#CCCCCC" }) }),
+                    stac.padding({ right: 4, child: stac.svg({ src: AppIcons.NEXT, width: 14, height: 14, color: "#CCCCCC" }) }), // Using NEXT for north_west
                   ],
                 }),
               }),
@@ -124,7 +127,7 @@ export class DashboardUI {
 }),
 
           stac.sliverToBoxAdapter({
-            child: stac.padding({ left: 16, right: 16, bottom: 12, child: ui.sectionHeader({ title: "New Launches", actionText: "View All", action: stac.navigate("/new-launches") }) }),
+            child: stac.padding({ left: 16, right: 16, bottom: 12, child: ui.sectionHeader({ title: "New Launches", actionText: "View All", action: stac.navigate(Endpoints.DASHBOARD.NEW_LAUNCHES) }) }),
           }),
 
 stac.sliverToBoxAdapter({
@@ -142,7 +145,7 @@ stac.sliverToBoxAdapter({
 }),
 
           stac.sliverToBoxAdapter({
-            child: stac.padding({ left: 16, right: 16, bottom: 16, child: ui.sectionHeader({ title: "Bestsellers", actionText: "View All", action: stac.navigate("/bestsellers") }) }),
+            child: stac.padding({ left: 16, right: 16, bottom: 16, child: ui.sectionHeader({ title: "Bestsellers", actionText: "View All", action: stac.navigate(Endpoints.DASHBOARD.BESTSELLERS) }) }),
           }),
 
           stac.sliverToBoxAdapter({
@@ -175,7 +178,7 @@ stac.sliverToBoxAdapter({
                 child: stac.column({
                   mainAxisSize: "min", crossAxisAlignment: "center",
                   children: [
-                    stac.icon({ icon: "exit_to_app", size: 48, color: Brand.primary }),
+                    stac.svg({ src: AppIcons.EXIT, width: 48, height: 48, color: Brand.primary }),
                     stac.sizedBox({ height: 16 }),
                     stac.text("Exit App?", { style: stac.textStyle({ fontSize: 20, fontWeight: "bold", color: Brand.textPrimary }) }),
                     stac.sizedBox({ height: 8 }),
@@ -201,7 +204,7 @@ stac.sliverToBoxAdapter({
      
       child: stac.scaffold({
         backgroundColor: Brand.background,
-        drawer: DashboardUI._drawer(isGuest, user),
+        drawer: DashboardUI._drawer(user),
         body: {
           type: "hideOnScroll",
           
@@ -212,7 +215,6 @@ stac.sliverToBoxAdapter({
             children: [
               homeBody,
               CategoryUI.buildCategoryUi(categories),
-              DashboardUI._wishlistScreen(user),
               ProfileUI.buildProfileUi(user),
             ]
           }),
@@ -225,13 +227,11 @@ stac.sliverToBoxAdapter({
 
   // ── CUSTOM PURE-SDUI BOTTOM NAVIGATION ──────────────────────────────────
 static _bottomNav() {
-    const tabs = [
-      { icon: AppIcons.HOME, label: "Home", index: 0 },
-      { icon: AppIcons.CATEGORY, label: "Categories", index: 1 },
-      { icon: AppIcons.HEART, label: "Wishlist", index: 2 },
-      { icon: AppIcons.PERSON, label: "Profile", index: 3 },
-    ];
-
+  const tabs = [
+    { icon: AppIcons.HOME, label: "Home", index: 0 },
+    { icon: AppIcons.CATEGORY, label: "Categories", index: 1 },
+    { icon: AppIcons.PERSON, label: "Profile", index: 2 },
+  ];
     return stac.container({
       decoration: {
         color: Brand.surface,
@@ -294,8 +294,9 @@ static _bottomNav() {
     });
   }
 
-  static _wishlistScreen(user) {
-    const isGuest = !user;
+  static _wishlistScreen(user, wishlistItems = []) {
+    const hasItems = wishlistItems.length > 0;
+
     return stac.scaffold({
       backgroundColor: Brand.background,
       body: {
@@ -304,13 +305,47 @@ static _bottomNav() {
           slivers: [
             ui.dynamicAppBar({ titleText: "Wishlist", isSliver: true, pinned: true }),
             stac.sliverToBoxAdapter({
-              child: isGuest
-                ? stac.padding({
+              child: stac.conditionalWidget({
+                stateKey: StateKeys.IS_LOGGED_IN,
+                expectedValue: true,
+                defaultValue: !!user,
+                onTrue: hasItems 
+                  ? stac.padding({
+                      all: 16,
+                      child: stac.column({
+                        crossAxisAlignment: "stretch",
+                        children: [
+                          stac.padding({
+                            bottom: 16,
+                            child: stac.text(`${wishlistItems.length} item${wishlistItems.length !== 1 ? "s" : ""}`, {
+                              style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }),
+                            }),
+                          }),
+                          ...wishlistItems.map((item) => WishlistUI._wishlistCard(item)),
+                        ],
+                      }),
+                    })
+                  : stac.padding({
+                      all: 40,
+                      child: stac.column({
+                        mainAxisAlignment: "center", crossAxisAlignment: "center",
+                        children: [
+                          stac.svg({ src: AppIcons.HEART, color: Brand.divider, width: 80, height: 80 }),
+                          stac.sizedBox({ height: 20 }),
+                          stac.text("Your wishlist is empty", { style: stac.textStyle({ fontSize: 18, fontWeight: "bold", color: Brand.textPrimary }) }),
+                          stac.sizedBox({ height: 8 }),
+                          stac.text("Save items you love and find them here", { textAlign: "center", style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
+                          stac.sizedBox({ height: 28 }),
+                          stac.sizedBox({ width: 200, child: w.button({ text: "Explore Products", action: stac.setGlobalState({ dashboard_tab_index: 0 }) }) }),
+                        ],
+                      }),
+                    }),
+                onFalse: stac.padding({
                     all: 40,
                     child: stac.column({
                       mainAxisAlignment: "center", crossAxisAlignment: "center",
                       children: [
-                        stac.icon({ icon: "favorite_border", color: Brand.divider, size: 80 }),
+                        stac.svg({ src: AppIcons.HEART, color: Brand.divider, width: 80, height: 80 }),
                         stac.sizedBox({ height: 20 }),
                         stac.text("Sign in to view your wishlist", { textAlign: "center", style: stac.textStyle({ fontSize: 16, color: Brand.textSecondary }) }),
                         stac.sizedBox({ height: 24 }),
@@ -318,21 +353,7 @@ static _bottomNav() {
                       ],
                     }),
                   })
-                : stac.padding({
-                    all: 40,
-                    child: stac.column({
-                      mainAxisAlignment: "center", crossAxisAlignment: "center",
-                      children: [
-                        stac.icon({ icon: "favorite_border", color: Brand.divider, size: 80 }),
-                        stac.sizedBox({ height: 20 }),
-                        stac.text("Your wishlist is empty", { style: stac.textStyle({ fontSize: 18, fontWeight: "bold", color: Brand.textPrimary }) }),
-                        stac.sizedBox({ height: 8 }),
-                        stac.text("Save items you love and find them here", { textAlign: "center", style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }) }),
-                        stac.sizedBox({ height: 28 }),
-                        stac.sizedBox({ width: 200, child: w.button({ text: "Explore Products", action: stac.setGlobalState({ dashboard_tab_index: 0 }) }) }),
-                      ],
-                    }),
-                  }),
+              })
             }),
           ],
         }),
@@ -360,12 +381,12 @@ static _bottomNav() {
 
   static _categoryCards(categories) {
     return [
-      stac.padding({ right: 16, child: ui.categoryCard({ title: "All", isSelected: true, action: stac.showToast("Filter: All") }) }),
-      ...categories.map((cat) => stac.padding({ right: 16, child: ui.categoryCard({ title: cat.name, imageUrl: cat.imageUrl, isSelected: false, action: stac.showToast(`Filter: ${cat.name}`) }) })),
+      stac.padding({ right: 16, child: ui.categoryCard({ title: "All", isSelected: true, action: stac.navigate(Endpoints.SEARCH.RESULTS("")) }) }),
+      ...categories.map((cat) => stac.padding({ right: 16, child: ui.categoryCard({ title: cat.name, imageUrl: cat.imageUrl, isSelected: false, action: stac.navigate(Endpoints.CATEGORY.PRODUCTS(cat.id)) }) })),
     ];
   }
 
-  static _productCards(products, isGuest, userCartMap, userWishlistSet, heroContext = "card") {
+  static _productCards(products, userCartMap, userWishlistSet, heroContext = "card") {
     return products.map((p) => {
       const mediaItems = p.images?.length > 0 ? p.images.map((img) => ({ url: img.url, mediaType: img.mediaType })) : [];
       const isWishlisted = userWishlistSet.has(p.id);
@@ -384,23 +405,43 @@ static _bottomNav() {
         rating:        p.averageRating?.toFixed(1) || "4.9",
         reviewCount:   p.reviewCount || 42,
         heroTag:       `product_image_${p.id}_${heroContext}`,
-        onCardTap:      stac.navigate(`/product/${p.id}`),
-        onWishlistTap:  isGuest
-          ? AuthUI.triggerAuth("bottomSheet")
-          : stac.apiRequest({ url: `/wishlist/toggle`, method: "POST", body: { productId: p.id } }),
-        onAddToCartTap: isGuest
-          ? AuthUI.triggerAuth("bottomSheet")
-          : stac.apiRequest({ url: `/cart/add`, method: "POST", body: { productId: p.id, quantity: 1 }, onSuccess: stac.showToast("Added to cart! 🛒") }),
-        onIncrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "increment" } }),
-        onDecrementTap: isGuest ? null : stac.apiRequest({ url: `/cart/update`, method: "PUT", body: { productId: p.id, action: "decrement" } }),
+        onCardTap:      stac.navigate(Endpoints.PRODUCT.DETAILS(p.id)),
+        onWishlistTap:  stac.conditionalAction({
+          stateKey: StateKeys.IS_LOGGED_IN,
+          expectedValue: true,
+          defaultValue: false,
+          onTrue: stac.apiRequest({ url: Endpoints.WISHLIST.TOGGLE, method: "POST", body: { productId: p.id } }),
+          onFalse: AuthUI.triggerAuth("bottomSheet")
+        }),
+        onAddToCartTap: stac.conditionalAction({
+          stateKey: StateKeys.IS_LOGGED_IN,
+          expectedValue: true,
+          defaultValue: false,
+          onTrue: stac.apiRequest({ url: Endpoints.CART.ADD, method: "POST", body: { productId: p.id, quantity: 1 }, onSuccess: stac.showToast("Added to cart! 🛒") }),
+          onFalse: AuthUI.triggerAuth("bottomSheet")
+        }),
+        onIncrementTap: stac.conditionalAction({
+          stateKey: StateKeys.IS_LOGGED_IN,
+          expectedValue: true,
+          defaultValue: false,
+          onTrue: stac.apiRequest({ url: Endpoints.CART.UPDATE, method: "PUT", body: { productId: p.id, action: "increment", pincode: "{{activePincode}}" } }),
+          onFalse: AuthUI.triggerAuth("bottomSheet")
+        }),
+        onDecrementTap: stac.conditionalAction({
+          stateKey: StateKeys.IS_LOGGED_IN,
+          expectedValue: true,
+          defaultValue: false,
+          onTrue: stac.apiRequest({ url: Endpoints.CART.UPDATE, method: "PUT", body: { productId: p.id, action: "decrement", pincode: "{{activePincode}}" } }),
+          onFalse: AuthUI.triggerAuth("bottomSheet")
+        }),
       });
     });
   }
 
-  static _actionIcons(isGuest, user, isDesktop) {
+  static _actionIcons(user, isDesktop) {
     const icons = [
       stac.reactiveBuilder({
-        listenTo: ["wishlistCount"],
+        listenTo: ["wishlistCount", StateKeys.IS_LOGGED_IN],
         child: stac.badge({
           count: "{{wishlistCount}}",
           color: Brand.error,
@@ -408,12 +449,18 @@ static _bottomNav() {
           position: { top: 2, right: 2 },
           child: w.iconButton({
             icon: AppIcons.HEART,
-            action: isGuest ? AuthUI.triggerAuth("bottomSheet") : stac.setGlobalState({ dashboard_tab_index: 2 })
+            action: stac.conditionalAction({
+              stateKey: StateKeys.IS_LOGGED_IN,
+              expectedValue: true,
+              defaultValue: false,
+              onTrue: stac.navigate(Endpoints.WISHLIST.BASE),
+              onFalse: AuthUI.triggerAuth("bottomSheet")
+            })
           })
         })
       }),
       stac.reactiveBuilder({
-        listenTo: ["cartCount"],
+        listenTo: ["cartCount", StateKeys.IS_LOGGED_IN],
         child: stac.badge({
           count: "{{cartCount}}",
           color: Brand.error,
@@ -421,7 +468,7 @@ static _bottomNav() {
           position: { top: 2, right: 2 },
           child: w.iconButton({
             icon: AppIcons.CART,
-            action: stac.navigate("/cart")
+            action: stac.navigate(Endpoints.CART.BASE)
           })
         })
       })
@@ -429,27 +476,46 @@ static _bottomNav() {
 
     if (isDesktop) {
       icons.push(
-        stac.row({
-          mainAxisSize: "min",
-          children: [
-            stac.sizedBox({ width: 8 }),
-            isGuest 
-              ? w.button({ text: "Sign In", fullWidth: false, action: AuthUI.triggerAuth("dialog") }) 
-              : w.iconButton({ icon: AppIcons.PERSON, action: stac.setGlobalState({ dashboard_tab_index: 3 }), color: Brand.primary })
-          ]
+        stac.reactiveBuilder({
+          listenTo: [StateKeys.IS_LOGGED_IN],
+          child: stac.row({
+            mainAxisSize: "min",
+            children: [
+              stac.sizedBox({ width: 8 }),
+              stac.conditionalWidget({
+                stateKey: StateKeys.IS_LOGGED_IN,
+                expectedValue: true,
+                defaultValue: !!user,
+                onTrue: w.iconButton({ icon: AppIcons.PERSON, action: stac.setGlobalState({ dashboard_tab_index: 2 }), color: Brand.primary }),
+                onFalse: w.button({ text: "Sign In", fullWidth: false, action: AuthUI.triggerAuth("dialog") })
+              })
+            ]
+          })
         })
       );
     }
     return icons;
   }
 
-static _drawer(isGuest, user) {
+static _drawer(user) {
     const navItems = [
       { icon: AppIcons.HOME,        label: "Home",       action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 0 })) },
       { icon: AppIcons.CATEGORY,    label: "Categories", action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 1 })) },
-      { icon: AppIcons.HEART,       label: "Wishlist",   action: stac.popThen(stac.setGlobalState({ dashboard_tab_index: 2 })) },
-      { icon: AppIcons.PERSON,      label: "Profile",    action: isGuest ? stac.popThen(AuthUI.triggerAuth("bottomSheet")) : stac.popThen(stac.setGlobalState({ dashboard_tab_index: 3 })) },
-      { icon: AppIcons.SETTING,     label: "Settings",   action: stac.popThen(stac.navigate("/settings", "push")) },
+      { icon: AppIcons.HEART,       label: "Wishlist",   action: stac.popThen(stac.conditionalAction({
+        stateKey: StateKeys.IS_LOGGED_IN,
+        expectedValue: true,
+        defaultValue: false,
+        onTrue: stac.navigate(Endpoints.WISHLIST.BASE),
+        onFalse: AuthUI.triggerAuth("bottomSheet")
+      })) },
+      { icon: AppIcons.PERSON,      label: "Profile",    action: stac.popThen(stac.conditionalAction({
+        stateKey: StateKeys.IS_LOGGED_IN,
+        expectedValue: true,
+        defaultValue: false,
+        onTrue: stac.setGlobalState({ dashboard_tab_index: 2 }),
+        onFalse: AuthUI.triggerAuth("bottomSheet")
+      })) },
+      { icon: AppIcons.SETTING,     label: "Settings",   action: stac.popThen(stac.navigate(Endpoints.DASHBOARD.SETTINGS, "push")) },
     ];
 
     return {
@@ -464,14 +530,23 @@ static _drawer(isGuest, user) {
               stac.container({
                 padding: [24, 32, 24, 32],
                 decoration: { color: Brand.primary },
-                child: stac.column({
-                  crossAxisAlignment: "start",
-                  children: [
-                    stac.image({ src: "assets/images/app_icon_hor.png", imageType: "asset", height: 28 }),
-                    stac.sizedBox({ height: 8 }),
-                    stac.text(isGuest ? "Welcome, Guest" : `Hi, ${user?.name ?? "there"}`, { style: stac.textStyle({ fontSize: 14, color: "#FFFFFF" }) }),
-                  ],
-                }),
+                child: stac.reactiveBuilder({
+                  listenTo: [StateKeys.IS_LOGGED_IN, StateKeys.USER_NAME],
+                  child: stac.column({
+                    crossAxisAlignment: "start",
+                    children: [
+                      stac.image({ src: "assets/images/app_icon_hor.png", imageType: "asset", height: 28 }),
+                      stac.sizedBox({ height: 8 }),
+                      stac.conditionalWidget({
+                        stateKey: StateKeys.IS_LOGGED_IN,
+                        expectedValue: true,
+                        defaultValue: !!user,
+                        onTrue: stac.text(`Hi, {{${StateKeys.USER_NAME}}}`, { style: stac.textStyle({ fontSize: 14, color: "#FFFFFF" }) }),
+                        onFalse: stac.text("Welcome, Guest", { style: stac.textStyle({ fontSize: 14, color: "#FFFFFF" }) })
+                      }),
+                    ],
+                  }),
+                })
               }),
               stac.sizedBox({ height: 8 }),
               ...navItems.map(({ icon, label, action }) =>
@@ -484,22 +559,28 @@ static _drawer(isGuest, user) {
               stac.divider({ color: Brand.divider, thickness: 1 }),
               stac.padding({
                 all: 20,
-                child: isGuest
-                  // 🔥 FIX: w.button is the widget, stac.popThen wraps the action!
-                  ? w.button({ 
-                      text: "Sign In / Register", 
-                      action: stac.popThen(AuthUI.triggerAuth("bottomSheet")) 
-                    })
-                  : w.button({
+                child: stac.reactiveBuilder({
+                  listenTo: [StateKeys.IS_LOGGED_IN],
+                  child: stac.conditionalWidget({
+                    stateKey: StateKeys.IS_LOGGED_IN,
+                    expectedValue: true,
+                    defaultValue: !!user,
+                    onTrue: w.button({
                       text: "Logout", 
                       variant: "outline", 
                       action: stac.apiRequest({ 
-                        url: "/auth/logout", 
+                        url: Endpoints.AUTH.LOGOUT, 
                         method: "POST", 
-                        onSuccess: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")), 
-                        onError: stac.manageSession("clear", null, stac.navigate("/auth/bootstrap", "replace")) 
+                        onSuccess: stac.manageSession("clear", null, stac.navigate(Endpoints.AUTH.BOOTSTRAP, "replace")), 
+                        onError: stac.manageSession("clear", null, stac.navigate(Endpoints.AUTH.BOOTSTRAP, "replace")) 
                       }),
                     }),
+                    onFalse: w.button({ 
+                      text: "Sign In / Register", 
+                      action: stac.popThen(AuthUI.triggerAuth("bottomSheet")) 
+                    })
+                  })
+                })
               }),
             ],
           }),

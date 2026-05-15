@@ -2,6 +2,7 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class AuthUI {
 
@@ -75,7 +76,7 @@ export class AuthUI {
           w.button({
             text: "Continue",
             action: stac.apiRequest({
-              url: "/auth/action", method: "POST",
+              url: Endpoints.AUTH.ACTION, method: "POST",
               body: { step: "identify_user", displayType, email: { actionType: "getFormValue", id: "email" } },
               onSuccess: stac.setGlobalState({ [errorKey]: "" }) // Clear error optimistically
             }),
@@ -113,7 +114,7 @@ export class AuthUI {
           w.button({
             text: "Login",
             action: stac.apiRequest({
-              url: "/auth/action", method: "POST",
+              url: Endpoints.AUTH.ACTION, method: "POST",
               body: { step: "verify_password", email, displayType, password: { actionType: "getFormValue", id: "password" } },
               onSuccess: stac.setGlobalState({ [errorKey]: "" })
             }),
@@ -151,7 +152,7 @@ export class AuthUI {
           w.button({
             text: "Verify",
             action: stac.apiRequest({
-              url: "/auth/action", method: "POST",
+              url: Endpoints.AUTH.ACTION, method: "POST",
               body: { step: "verify_otp", email, displayType, otp: { actionType: "getFormValue", id: "otp" } },
               onSuccess: stac.setGlobalState({ [errorKey]: "" })
             }),

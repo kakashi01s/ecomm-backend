@@ -9,6 +9,10 @@ export class AuthRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
+  static async findById(id) {
+    return prisma.user.findUnique({ where: { id } });
+  }
+
   static async updateUser(userId, data) {
     // This is used for setting isVerified=true and updating other user details
     return prisma.user.update({

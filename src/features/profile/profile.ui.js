@@ -3,6 +3,7 @@ import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
 import { AuthUI } from "../auth/auth.ui.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class ProfileUI {
 
@@ -52,19 +53,19 @@ export class ProfileUI {
             stac.sliverToBoxAdapter({
               child: ProfileUI._section("Account", [
                 ProfileUI._menuItem({
-                  icon: "person_outline",
+                  icon: AppIcons.PERSON,
                   label: "Edit Profile",
-                  action: stac.navigate("/profile/edit", "push"),
+                  action: stac.navigate(Endpoints.PROFILE.EDIT, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "location_on",
+                  icon: AppIcons.LOCATION,
                   label: "Saved Addresses",
-                  action: stac.navigate("/profile/addresses", "push"),
+                  action: stac.navigate(Endpoints.PROFILE.ADDRESSES, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "payment",
+                  icon: AppIcons.WALLET,
                   label: "Payment Methods",
-                  action: stac.navigate("/profile/payments", "push"),
+                  action: stac.navigate(`${Endpoints.PROFILE.BASE}/payments`, "push"),
                 }),
               ]),
             }),
@@ -73,20 +74,20 @@ export class ProfileUI {
             stac.sliverToBoxAdapter({
               child: ProfileUI._section("Orders", [
                 ProfileUI._menuItem({
-                  icon: "receipt_long",
+                  icon: AppIcons.RECEIPT,
                   label: "My Orders",
                   badge: null,
-                  action: stac.navigate("/profile/orders", "push"),
+                  action: stac.navigate(Endpoints.ORDERS.BASE, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "local_shipping",
+                  icon: AppIcons.ALARM,
                   label: "Track Order",
-                  action: stac.navigate("/profile/orders/track", "push"),
+                  action: stac.navigate(`${Endpoints.ORDERS.BASE}/track`, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "replay",
+                  icon: AppIcons.RECORDING,
                   label: "Returns & Refunds",
-                  action: stac.navigate("/profile/orders/returns", "push"),
+                  action: stac.navigate(`${Endpoints.ORDERS.BASE}/returns`, "push"),
                 }),
               ]),
             }),
@@ -95,24 +96,24 @@ export class ProfileUI {
             stac.sliverToBoxAdapter({
               child: ProfileUI._section("Preferences", [
                 ProfileUI._menuItem({
-                  icon: "notifications_none",
+                  icon: AppIcons.BELL,
                   label: "Notifications",
-                  action: stac.navigate("/settings/notifications", "push"),
+                  action: stac.navigate(`${Endpoints.DASHBOARD.SETTINGS}/notifications`, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "lock_outline",
+                  icon: AppIcons.LOCK,
                   label: "Privacy & Security",
-                  action: stac.navigate("/settings/privacy", "push"),
+                  action: stac.navigate(`${Endpoints.DASHBOARD.SETTINGS}/privacy`, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "help_outline",
+                  icon: AppIcons.HELP,
                   label: "Help & Support",
-                  action: stac.navigate("/help", "push"),
+                  action: stac.navigate(Endpoints.UTILITIES.HELP, "push"),
                 }),
                 ProfileUI._menuItem({
-                  icon: "info_outline",
+                  icon: AppIcons.INFO,
                   label: "About App",
-                  action: stac.navigate("/about", "push"),
+                  action: stac.navigate(Endpoints.UTILITIES.ABOUT, "push"),
                 }),
               ]),
             }),
@@ -127,17 +128,17 @@ export class ProfileUI {
                       text: "Logout",
                       variant: "outline",
                       action: stac.apiRequest({
-                        url: "/auth/logout",
+                        url: Endpoints.AUTH.LOGOUT,
                         method: "POST",
                         onSuccess: stac.manageSession(
                           "clear",
                           null,
-                          stac.navigate("/auth/bootstrap", "replace")
+                          stac.navigate(Endpoints.AUTH.BOOTSTRAP, "replace")
                         ),
                         onError: stac.manageSession(
                           "clear",
                           null,
-                          stac.navigate("/auth/bootstrap", "replace")
+                          stac.navigate(Endpoints.AUTH.BOOTSTRAP, "replace")
                         ),
                       }),
                     }),
@@ -271,17 +272,18 @@ export class ProfileUI {
             ...(!isGuest
               ? [
                   stac.inkWell({
-                    action: stac.navigate("/profile/edit", "push"),
+                    action: stac.navigate(Endpoints.PROFILE.EDIT, "push"),
                     child: stac.container({
                       padding: [8, 8, 8, 8],
                       decoration: {
                         color: Brand.background,
                         borderRadius: Brand.radiusSmall,
                       },
-                      child: stac.icon({
-                        icon: "edit",
+                      child: stac.svg({
+                        src: AppIcons.EDIT,
                         color: Brand.primary,
-                        size: 18,
+                        width: 18,
+                        height: 18,
                       }),
                     }),
                   }),
@@ -373,10 +375,11 @@ export class ProfileUI {
                 borderRadius: Brand.radiusSmall,
               },
               child: stac.center({
-                child: stac.icon({
-                  icon,
+                child: stac.svg({
+                  src: icon,
                   color: Brand.primary,
-                  size: 20,
+                  width: 20,
+                  height: 20,
                 }),
               }),
             }),
@@ -402,7 +405,7 @@ export class ProfileUI {
                   stac.sizedBox({ width: 8 }),
                 ]
               : []),
-            stac.icon({ icon: "chevron_right", color: Brand.textSecondary, size: 18 }),
+            stac.svg({ src: AppIcons.NEXT, color: Brand.textSecondary, width: 18, height: 18 }),
           ],
         }),
       }),

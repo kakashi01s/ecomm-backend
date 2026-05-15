@@ -2,6 +2,7 @@ import { stac } from "../../core/sdui/StacWidgets.js";
 import { ui, Brand } from "../../core/sdui/components.js";
 import { w } from "../../core/sdui/widgets.js";
 import { AppIcons } from "../../core/constants/icons.js";
+import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class WishlistUI {
   static buildWishlistScreen(items) {
@@ -22,7 +23,7 @@ export class WishlistUI {
       title: "Your wishlist is empty",
       subtitle: "Save items you love and come back to them anytime.",
       buttonText: "Start Shopping",
-      buttonAction: stac.navigate("/dashboard", "replace"),
+      buttonAction: stac.navigate(Endpoints.DASHBOARD.BASE, "replace"),
     });
   }
 
@@ -68,7 +69,7 @@ export class WishlistUI {
         children: [
           // Product image — tappable to product page
           stac.inkWell({
-            action: stac.navigate(`/product/${product.id}`),
+            action: stac.navigate(Endpoints.PRODUCT.DETAILS(product.id)),
             child: stac.clipRRect({
               borderRadius: {
                 topLeft: Brand.radiusMedium,
@@ -110,10 +111,10 @@ export class WishlistUI {
                       // Remove from wishlist
                       stac.inkWell({
                         action: stac.apiRequest({
-                          url: `/wishlist/remove`,
+                          url: Endpoints.WISHLIST.REMOVE,
                           method: "POST",
                           body: { productId: product.id },
-                          onSuccess: stac.navigate("/wishlist", "replace"),
+                          onSuccess: stac.navigate(Endpoints.WISHLIST.BASE, "replace"),
                         }),
                         child: stac.padding({
                           all: 4,
@@ -176,11 +177,11 @@ export class WishlistUI {
                     variant: "primary",
                     icon: AppIcons.CART,
                     action: stac.apiRequest({
-                      url: `/wishlist/move-to-cart`,
+                      url: Endpoints.WISHLIST.MOVE_TO_CART,
                       method: "POST",
                       body: { productId: product.id },
                       onSuccess: stac.showToast("Moved to cart! 🛒", {
-                        nextAction: stac.navigate("/wishlist", "replace"),
+                        nextAction: stac.navigate(Endpoints.WISHLIST.BASE, "replace"),
                       }),
                     }),
                   }),

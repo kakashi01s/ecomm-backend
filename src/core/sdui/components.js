@@ -44,7 +44,7 @@ const _productImage = ({ url, width, height, borderRadius = Brand.radiusSmall })
   });
 
 // REFACTORED: Wishlist Heart (Pure SDUI Logic)
-const _wishlistHeart = ({ productId, action }) => {
+const _wishlistHeart = ({ productId, isWishlisted = false, action }) => {
   const stateKey = `wishlist_${productId}`;
   
   return stac.reactiveBuilder({
@@ -58,9 +58,9 @@ const _wishlistHeart = ({ productId, action }) => {
         child: stac.conditionalWidget({
           stateKey: stateKey,
           expectedValue: true, // If wishlist_{id} == true
-          defaultValue: false,
-          onTrue: stac.icon({ icon: "favorite", color: "#D32F2F", size: 18 }),
-          onFalse: stac.icon({ icon: "favorite_border", color: "#757575", size: 18 })
+          defaultValue: isWishlisted,
+          onTrue: stac.icon({ icon: "favorite", color: Brand.error, size: 18 }),
+          onFalse: stac.svg({ src: AppIcons.HEART, color: Brand.textSecondary, width: 18, height: 18 })
         })
       }),
     }),
@@ -68,40 +68,78 @@ const _wishlistHeart = ({ productId, action }) => {
 };
 
 // REFACTORED: Cart Quantity Button (Pure SDUI Logic)
-const _cartQtyButton = ({ productId, addAction, incrementAction, decrementAction }) => {
+const _cartQtyButton = ({ productId, addAction, incrementAction, decrementAction, variant = "compact" }) => {
   const stateKey = `cart_qty_${productId}`;
+  const isFull = variant === "full";
   
+  // Design details
+  const height = isFull ? 48 : 36;
+  const borderRadius = isFull ? Brand.radiusSmall : 18;
+  const color = Brand.primary;
+
   return stac.reactiveBuilder({
     listenTo: [stateKey],
-    child: stac.container({
-      child: stac.conditionalWidget({
-        stateKey: stateKey,
-        expectedValue: 0, // If cart_qty_{id} == 0
-        defaultValue: 0,
-        
-        // onTrue means Quantity is 0 -> SHOW ADD BUTTON
-        onTrue: stac.asyncButton({ 
-          action: addAction, 
-          child: stac.container({
-            height: 36, width: 36,
-            decoration: { color: Brand.primary, borderRadius: 18 },
-            child: stac.center({ child: stac.icon({ icon: "add", color: "#FFFFFF", size: 20 }) })
+    child: stac.conditionalWidget({
+      stateKey: stateKey,
+      expectedValue: 0,
+      defaultValue: 0,
+      
+      // SHOW ADD BUTTON
+      onTrue: stac.asyncButton({ 
+        action: addAction, 
+        child: stac.container({
+          height: height,
+          width: isFull ? "double.infinity" : height,
+          decoration: { color, borderRadius },
+          child: stac.center({ 
+            child: isFull 
+              ? stac.row({
+                  mainAxisSize: "min",
+                  children: [
+                    stac.icon({ icon: "add", color: "#FFFFFF", size: 20 }),
+                    stac.sizedBox({ width: 8 }),
+                    stac.text("ADD TO CART", { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold", letterSpacing: 1.1 }) })
+                  ]
+                })
+              : stac.icon({ icon: "add", color: "#FFFFFF", size: 20 })
           })
-        }),
-        
-        // onFalse means Quantity is > 0 -> SHOW STEPPER
-        onFalse: stac.container({
-          height: 36,
-          decoration: { color: Brand.primary, borderRadius: 18 },
-          child: stac.row({ 
-            mainAxisSize: "min",
-            children: [
-              stac.asyncButton({ action: decrementAction, child: stac.icon({ icon: "remove", color: "#FFFFFF", size: 16 }) }),
-              // We can still use placeholders for direct value injection!
-              stac.padding({ horizontal: 8, child: stac.text(`{{${stateKey}}}`, { style: stac.textStyle({ color: "#FFFFFF", fontWeight: "bold" }) }) }),
-              stac.asyncButton({ action: incrementAction, child: stac.icon({ icon: "add", color: "#FFFFFF", size: 16 }) }),
-            ]
-          })
+        })
+      }),
+      
+      // SHOW STEPPER
+      onFalse: stac.container({
+        height: height,
+        width: isFull ? "double.infinity" : 100, 
+        decoration: { 
+          color: isFull ? Brand.surface : color, 
+          borderRadius,
+          border: isFull ? { color, width: 2 } : null 
+        },
+        child: stac.row({ 
+          mainAxisAlignment: isFull ? "spaceBetween" : "spaceEvenly",
+          children: [
+            stac.asyncButton({ 
+              action: decrementAction, 
+              child: stac.padding({ 
+                all: isFull ? 12 : 8, 
+                child: stac.icon({ icon: "remove", color: isFull ? color : "#FFFFFF", size: 16 }) 
+              }) 
+            }),
+            stac.text(`{{${stateKey}}}`, { 
+              style: stac.textStyle({ 
+                color: isFull ? Brand.textPrimary : "#FFFFFF", 
+                fontWeight: "bold",
+                fontSize: isFull ? 16 : 14 
+              }) 
+            }),
+            stac.asyncButton({ 
+              action: incrementAction, 
+              child: stac.padding({ 
+                all: isFull ? 12 : 8, 
+                child: stac.icon({ icon: "add", color: isFull ? color : "#FFFFFF", size: 16 }) 
+              }) 
+            }),
+          ]
         })
       })
     })
@@ -177,10 +215,11 @@ export const ui = {
             borderRadius: 32,
           },
           child: stac.center({
-            child: stac.icon({
-              icon: "grid_view",
+            child: stac.svg({
+              src: AppIcons.CATEGORY,
               color: isSelected ? "#FFFFFF" : "#999999",
-              size: 28,
+              width: 28,
+              height: 28,
             }),
           }),
         });
@@ -262,7 +301,7 @@ productCard: ({
           height: 175,
           errorWidget: stac.container({
             color: "#F5F5F5",
-            child: stac.center({ child: stac.icon({ icon: "image_not_supported", color: "#CCCCCC", size: 28 }) }),
+            child: stac.center({ child: stac.svg({ src: AppIcons.ALERT, color: "#CCCCCC", width: 28, height: 28 }) }),
           })
         });
 
@@ -275,7 +314,7 @@ productCard: ({
         children: [
           rawMediaWidget, // No Positioned wrapper!
           ...(isOnSale ? [ stac.positioned({ top: 8, left: 8, child: stac.container({ padding: [8, 4, 8, 4], decoration: { color: Brand.error, borderRadius: 10 }, child: stac.text("SALE", { style: stac.textStyle({ color: "#FFFFFF", fontSize: 9, fontWeight: "bold", letterSpacing: 0.8 }) }) }) }) ] : []),
-          stac.positioned({ top: 6, right: 6, child: _wishlistHeart({ productId: id, action: onWishlistTap }) }),
+          stac.positioned({ top: 6, right: 6, child: _wishlistHeart({ productId: id, isWishlisted, action: onWishlistTap }) }),
         ],
       }),
     });
@@ -346,6 +385,7 @@ productCard: ({
     initialQty = 1,
     onIncrement,
     onDecrement,
+    onDelete,
   }) =>
     stac.container({
       margin: [0, 0, 0, 12],
@@ -378,16 +418,31 @@ productCard: ({
                 crossAxisAlignment: "start",
                 mainAxisSize: "min",
                 children: [
-                  // Subtitle (category)
-                  stac.text(subtitle || "", {
-                    maxLines: 1,
-                    overflow: "ellipsis",
-                    style: stac.textStyle({
-                      fontSize: 10,
-                      color: Brand.textSecondary,
-                      fontWeight: "bold",
-                      letterSpacing: 0.4,
-                    }),
+                  // Header Row: Subtitle + Delete Button
+                  stac.row({
+                    mainAxisAlignment: "spaceBetween",
+                    children: [
+                      stac.text(subtitle || "", {
+                        maxLines: 1,
+                        overflow: "ellipsis",
+                        style: stac.textStyle({
+                          fontSize: 10,
+                          color: Brand.textSecondary,
+                          fontWeight: "bold",
+                          letterSpacing: 0.4,
+                        }),
+                      }),
+
+                      ...(onDelete ? [
+                        stac.inkWell({
+                          action: onDelete,
+                          child: stac.padding({
+                            all: 4,
+                            child: stac.svg({ src: AppIcons.DELETE, color: Brand.error, width: 18, height: 18 })
+                          })
+                        })
+                      ] : [])
+                    ]
                   }),
 
                   stac.sizedBox({ height: 3 }),
@@ -420,13 +475,10 @@ productCard: ({
                       }),
 
                       // ── NATIVE QTY BUTTON ──────────────────────────
-                      // Reuses the exact same widget as product card and
-                      // product page. ProductState keeps them all in sync.
                       _cartQtyButton({
                         productId,
-                        initialQty,
-                        isFullWidth: false,
-                        addAction: onIncrement,    // qty was 0 → "add" (shouldn't happen in cart, but safe)
+                        variant: "compact",
+                        addAction: onIncrement,
                         incrementAction: onIncrement,
                         decrementAction: onDecrement,
                       }),
@@ -533,56 +585,40 @@ productCard: ({
     actions = [],
     backAction = null,
   }) => {
-    let titleWidget;
+    let resolvedTitle = titleText;
 
     if (showSearch) {
-      titleWidget = w.searchBar({ hintText: "Search products...", isReadOnly: true });
+      resolvedTitle = w.searchBar({ hintText: "Search products...", isReadOnly: true });
     } else if (showLogo || (isDashboard && !titleText)) {
-      titleWidget = stac.image({
+      resolvedTitle = stac.image({
         src: "assets/images/app_icon_hor.png",
         imageType: "asset",
         height: 24,
         fit: "contain",
       });
-    } else {
-      titleWidget = stac.text(titleText || "", {
-        style: stac.textStyle({ fontSize: 18, fontWeight: "bold", color: Brand.textPrimary }),
-      });
     }
 
-    const resolvedActions = actions.map((item) => {
+    const resolvedActions = (actions || []).map((item) => {
       if (item && typeof item === "object" && !item.type && item.icon !== undefined) {
         const { icon, action, badgeType = null, color = null, size = 22, padding = 8 } = item;
-
-        if (badgeType === "cart") {
-          return { type: "cart_badge_icon", icon, action, color: color ?? Brand.textPrimary, size, padding };
+        if (badgeType === "cart" || badgeType === "wishlist") {
+            const stateKey = badgeType === "cart" ? "cartCount" : "wishlistCount";
+            return w.badgedIconButton({ icon, action, stateKey, color: color ?? Brand.textPrimary, size });
         }
-        if (badgeType === "wishlist") {
-          return { type: "wishlist_badge_icon", icon, action, color: color ?? Brand.textPrimary, size, padding };
-        }
-
         return w.iconButton({ icon, action, color, size, padding });
       }
       return item;
     });
 
     const appBarProps = {
-      title: titleWidget,
+      title: resolvedTitle,
       backgroundColor: Brand.surface,
-      centerTitle: !showSearch && !showLogo && !isDashboard,
+      centerTitle: true,
       elevation: 0,
       toolbarHeight: 56,
       actions: resolvedActions,
+      automaticallyImplyLeading: true, // Let Flutter handle the leading part
     };
-
-if (!isDashboard) {
-      appBarProps.leading = w.iconButton({
-        icon: AppIcons.BACK,
-        // Agar custom backAction diya hai toh wo use karo, warna default pop
-        action: backAction ?? stac.navigate(null, "pop"),
-        color: Brand.textPrimary,
-      });
-    }
 
     if (isSliver) {
       return stac.sliverAppBar({ ...appBarProps, floating: !pinned, pinned });
@@ -597,12 +633,12 @@ mediaCarousel: ({ items = [], height = 400, borderRadius = 0, showDots = true, a
       type: "container",
       color: "#F0F0F0",
       alignment: "center", // यह overflow को रोकेगा और Icon को बीच में रखेगा
-      child: {
-        type: "icon",
-        icon: "image_not_supported", 
+      child: stac.svg({
+        src: AppIcons.ALERT, 
         color: "#CCCCCC",
-        size: 32
-      }
+        width: 32,
+        height: 32
+      })
     };
 
     return {
