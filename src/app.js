@@ -25,6 +25,7 @@ import { router as utilityRoutes } from "./features/app/utilities/utilities.rout
 import categoryRoutes from "./features/category/category.routes.js";
 import cartRoutes from "./features/cart/cart.routes.js";
 import wishlistRoutes from "./features/wishlist/wishlist.routes.js";
+import ordersRoutes from "./features/profile/orders.routes.js";
 import { Endpoints, getMountPath } from "./core/constants/apiEndpoints.js";
 
 
@@ -98,6 +99,7 @@ app.use(getMountPath(Endpoints.CATEGORY.BASE), categoryRoutes);
 console.log("Registering Cart Routes...");
 app.use(getMountPath(Endpoints.CART.BASE), cartRoutes);
 app.use(getMountPath(Endpoints.DASHBOARD.BASE), dashBoardRoutes);
+app.use(getMountPath(Endpoints.ORDERS.BASE), ordersRoutes);
 app.use(getMountPath(Endpoints.WISHLIST.BASE), wishlistRoutes);
 app.use(getMountPath(Endpoints.PROFILE.BASE), profileRoutes);
 app.use(getMountPath(Endpoints.SEARCH.BASE), searchRoutes);

@@ -30,17 +30,33 @@ static async updateUser(userId, { name, phone, avatarUrl, activePincode }) {
   }
 
   static async createAddress(userId, data) {
-    if (data.isDefault) {
+    const isDefault = data.isDefault === true || data.isDefault === "true";
+    if (isDefault) {
       await prisma.address.updateMany({ where: { userId }, data: { isDefault: false } });
     }
-    return prisma.address.create({ data: { ...data, userId } });
+    return prisma.address.create({ 
+      data: { 
+        ...data, 
+        userId, 
+        isDefault,
+        id: undefined // Ensure id is not passed
+      } 
+    });
   }
 
   static async updateAddress(addressId, userId, data) {
-    if (data.isDefault) {
+    const isDefault = data.isDefault === true || data.isDefault === "true";
+    if (isDefault) {
       await prisma.address.updateMany({ where: { userId }, data: { isDefault: false } });
     }
-    return prisma.address.update({ where: { id: addressId }, data });
+    const { id, userId: uId, ...updateData } = data;
+    return prisma.address.update({ 
+      where: { id: addressId }, 
+      data: {
+        ...updateData,
+        isDefault
+      }
+    });
   }
 
   static async deleteAddress(addressId, userId) {

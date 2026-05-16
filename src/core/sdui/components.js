@@ -603,7 +603,7 @@ productCard: ({
         const { icon, action, badgeType = null, color = null, size = 22, padding = 8 } = item;
         if (badgeType === "cart" || badgeType === "wishlist") {
             const stateKey = badgeType === "cart" ? "cartCount" : "wishlistCount";
-            return w.badgedIconButton({ icon, action, stateKey, color: color ?? Brand.textPrimary, size });
+            return w.badgeIconButton({ icon, action, stateKey, color: color ?? Brand.textPrimary, size });
         }
         return w.iconButton({ icon, action, color, size, padding });
       }

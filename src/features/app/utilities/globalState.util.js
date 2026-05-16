@@ -66,12 +66,31 @@ export class GlobalStateHelper {
       }
     }
 
+    let delivery_msg = "Checking delivery availability...";
+    if (activePincode) {
+      try {
+        const zone = await prisma.deliveryZone.findUnique({
+          where: { pincode: activePincode.toString() }
+        });
+        if (zone && zone.isServiceable) {
+          delivery_msg = `Delivery in ${zone.estimatedDaysMin}-${zone.estimatedDaysMax} days (Cost: ₹${zone.deliveryCost})`;
+        } else {
+          delivery_msg = "Delivery not available in your area.";
+        }
+      } catch (e) {
+        console.error("[GLOBAL STATE] Error fetching delivery zone:", e.message);
+      }
+    } else {
+      delivery_msg = "Please enter your pincode";
+    }
+
     return {
       ...GlobalStateHelper.baseMeta(),
       ...productQuantities, // Spread individual quantities like { cart_qty_1: 2, cart_qty_5: 1 }
       cartCount,
       wishlistCount,
       activePincode,
+      delivery_msg,
     };
   }
 }

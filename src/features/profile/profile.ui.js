@@ -62,11 +62,6 @@ export class ProfileUI {
                   label: "Saved Addresses",
                   action: stac.navigate(Endpoints.PROFILE.ADDRESSES, "push"),
                 }),
-                ProfileUI._menuItem({
-                  icon: AppIcons.WALLET,
-                  label: "Payment Methods",
-                  action: stac.navigate(`${Endpoints.PROFILE.BASE}/payments`, "push"),
-                }),
               ]),
             }),
 
@@ -84,11 +79,6 @@ export class ProfileUI {
                   label: "Track Order",
                   action: stac.navigate(`${Endpoints.ORDERS.BASE}/track`, "push"),
                 }),
-                ProfileUI._menuItem({
-                  icon: AppIcons.RECORDING,
-                  label: "Returns & Refunds",
-                  action: stac.navigate(`${Endpoints.ORDERS.BASE}/returns`, "push"),
-                }),
               ]),
             }),
 
@@ -96,24 +86,19 @@ export class ProfileUI {
             stac.sliverToBoxAdapter({
               child: ProfileUI._section("Preferences", [
                 ProfileUI._menuItem({
-                  icon: AppIcons.BELL,
-                  label: "Notifications",
-                  action: stac.navigate(`${Endpoints.DASHBOARD.SETTINGS}/notifications`, "push"),
-                }),
-                ProfileUI._menuItem({
                   icon: AppIcons.LOCK,
                   label: "Privacy & Security",
-                  action: stac.navigate(`${Endpoints.DASHBOARD.SETTINGS}/privacy`, "push"),
+                  action: stac.navigate(`${Endpoints.PROFILE.BASE}/pages/privacy`, "push"),
                 }),
                 ProfileUI._menuItem({
                   icon: AppIcons.HELP,
                   label: "Help & Support",
-                  action: stac.navigate(Endpoints.UTILITIES.HELP, "push"),
+                  action: stac.navigate(`${Endpoints.PROFILE.BASE}/pages/help`, "push"),
                 }),
                 ProfileUI._menuItem({
                   icon: AppIcons.INFO,
                   label: "About App",
-                  action: stac.navigate(Endpoints.UTILITIES.ABOUT, "push"),
+                  action: stac.navigate(`${Endpoints.PROFILE.BASE}/pages/about`, "push"),
                 }),
               ]),
             }),

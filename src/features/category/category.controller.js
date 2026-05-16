@@ -4,6 +4,7 @@ import { AsyncHandler } from "../../utils/asyncHandler.js";
 import { CustomError } from "../../utils/custom.Error.js";
 import { GlobalStateHelper } from "../app/utilities/globalState.util.js";
 import { CategoryUI } from "./category.ui.js";
+import { CategoryProductsUI } from "./category.products.ui.js";
 import redisClient from "../../config/redisClient.js";
 import prisma from "../../core/prisma/client.js";
 
@@ -90,24 +91,20 @@ export class CategoryController {
     /**
      * getCategoryProducts
      * Endpoint for the Category Products Page (initial load).
-     * Always returns a fresh list unless filters are explicitly applied later.
      */
     static getCategoryProducts = AsyncHandler(async (req, res) => {
         const { id } = req.params;
         const user = req.user;
 
-        // For a "fresh" load, we ignore any previously saved filters in Redis.
-        // This ensures the user sees the full category product list initially.
         const sessionKey = user ? user.id : (req.headers.authorization || req.ip);
         const redisKey = `filters:cat:${id}:user:${sessionKey}`;
-        
-        // Optional: We can clear the Redis key to ensure the Filter Screen also starts fresh.
         await redisClient.del(redisKey);
 
         const categoryData = await CategoryRepository.getCategoryWithProducts(id, {});
         if (!categoryData) throw new CustomError(404, "Category not found");
 
         const products = categoryData.products || [];
+        console.log(`[DEBUG] Category ${id} products count:`, products.length);
         
         // Fetch user wishlist set
         const userWishlistSet = new Set();
@@ -116,15 +113,13 @@ export class CategoryController {
             wishlists.forEach(w => userWishlistSet.add(w.productId));
         }
 
-        // On a fresh load, active filter count is always 0
         const activeFilterCount = 0;
-
-        const ui = CategoryUI.buildCategoryProductsPage(categoryData, products, activeFilterCount);
+        const ui = CategoryProductsUI.buildCategoryProductsPage(id, categoryData.name);
         
-        // Initialize global state + product grid metadata
         const meta = await GlobalStateHelper.getGlobalMeta(user, req.headers);
-        meta[`cat_prod_${id}`] = CategoryUI._buildProductCards(products, !user, userWishlistSet);
+        meta[`cat_prod_${id}`] = CategoryProductsUI.buildProductCards(products, !user, userWishlistSet);
         meta[`cat_filter_count_${id}`] = activeFilterCount;
+        meta[`cat_has_prod_${id}`] = products.length > 0;
 
         return res.status(200).json({ ui, meta });
     });
@@ -141,15 +136,12 @@ export class CategoryController {
         const sessionKey = user ? user.id : (req.headers.authorization || req.ip);
         const redisKey = `filters:cat:${id}:user:${sessionKey}`;
 
-        // If body is completely empty, it means "Clear Filters"
         if (Object.keys(req.body).length === 0) {
             await redisClient.del(redisKey);
         } else {
-            // Save the applied filters in Redis for 24 hours
             await redisClient.setEx(redisKey, 86400, JSON.stringify(req.body));
         }
 
-        // Parse dynamic colors and sizes from form values
         const colors = Object.keys(rest)
             .filter(key => key.startsWith("color_") && (rest[key] === true || rest[key] === "true"))
             .map(key => key.replace("color_", ""));
@@ -165,30 +157,27 @@ export class CategoryController {
 
         const products = categoryData.products || [];
         
-        // Calculate active filter count for the response meta
         let activeFilterCount = 0;
         if (minPrice && String(minPrice).trim() !== "") activeFilterCount++;
         if (maxPrice && String(maxPrice).trim() !== "") activeFilterCount++;
         activeFilterCount += colors.length + sizes.length;
         
-        // Fetch user wishlist set
         const userWishlistSet = new Set();
         if (user) {
             const wishlists = await prisma.wishlist.findMany({ where: { userId: user.id, product: { isActive: true } } });
             wishlists.forEach(w => userWishlistSet.add(w.productId));
         }
 
-        // Only return the updated meta for reactive update
         const meta = await GlobalStateHelper.getGlobalMeta(user, req.headers);
-        meta[`cat_prod_${id}`] = CategoryUI._buildProductCards(products, !user, userWishlistSet);
+        meta[`cat_prod_${id}`] = CategoryProductsUI.buildProductCards(products, !user, userWishlistSet);
         meta[`cat_filter_count_${id}`] = activeFilterCount;
+        meta[`cat_has_prod_${id}`] = products.length > 0;
 
         return res.status(200).json({ status: 200, data: null, meta });
     });
 
     /**
      * getFilterScreen
-     * Fetches dynamic filter attributes from the DB and returns the Filter Screen UI.
      */
     static getFilterScreen = AsyncHandler(async (req, res) => {
         const { id } = req.params;
@@ -204,7 +193,7 @@ export class CategoryController {
         }
 
         const filters = await CategoryRepository.getDynamicFilters(id);
-        const ui = CategoryUI.buildFilterScreen(id, filters, appliedFilters);
+        const ui = CategoryProductsUI.buildFilterScreen(id, filters, appliedFilters);
 
         return res.status(200).json({ ui });
     });

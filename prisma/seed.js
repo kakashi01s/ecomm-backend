@@ -14,6 +14,7 @@ async function main() {
   await prisma.address.deleteMany();
   await prisma.cartItem.deleteMany();
   await prisma.wishlist.deleteMany();
+  await prisma.deliveryZone.deleteMany();
   await prisma.productImage.deleteMany();
   await prisma.productVariant.deleteMany();
   await prisma.product.deleteMany();
@@ -48,21 +49,21 @@ async function main() {
         title: "The Silver Symphony",
         mediaUrl: "https://flutter.github.io/assets-for-api-docs/assets/videos/butterfly.mp4", 
         mediaType: "video",
-        linkUrl: "/category/1",
+        linkUrl: "/categories/1/products",
         isActive: true
       },
       {
         title: "Summer Essentials",
         mediaUrl: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1200&q=80",
         mediaType: "image",
-        linkUrl: "/category/2",
+        linkUrl: "/categories/2/products",
         isActive: true
       },
       {
         title: "Bridal Collection",
         mediaUrl: "https://images.unsplash.com/photo-1596944924616-7b38e7cfac36?auto=format&fit=crop&w=1200&q=80",
         mediaType: "image",
-        linkUrl: "/category/3",
+        linkUrl: "/categories/3/products",
         isActive: true
       }
     ]
@@ -402,6 +403,24 @@ async function main() {
         ]
       }
     }
+  });
+
+  // ==========================================
+  // 7. SEED DELIVERY ZONES
+  // ==========================================
+  console.log('🚚 Creating Delivery Zones...');
+  await prisma.deliveryZone.createMany({
+    data: [
+      { pincode: '302001', city: 'Jaipur', state: 'Rajasthan', deliveryCost: 40.0, estimatedDaysMin: 2, estimatedDaysMax: 4 },
+      { pincode: '110001', city: 'New Delhi', state: 'Delhi', deliveryCost: 30.0, estimatedDaysMin: 1, estimatedDaysMax: 3 },
+      { pincode: '400001', city: 'Mumbai', state: 'Maharashtra', deliveryCost: 60.0, estimatedDaysMin: 2, estimatedDaysMax: 5 },
+      { pincode: '560001', city: 'Bengaluru', state: 'Karnataka', deliveryCost: 70.0, estimatedDaysMin: 3, estimatedDaysMax: 6 },
+      { pincode: '600001', city: 'Chennai', state: 'Tamil Nadu', deliveryCost: 65.0, estimatedDaysMin: 3, estimatedDaysMax: 6 },
+      { pincode: '313001', city: 'Udaipur', state: 'Rajasthan', deliveryCost: 50.0, estimatedDaysMin: 2, estimatedDaysMax: 4 },
+      { pincode: '122001', city: 'Gurgaon', state: 'Haryana', deliveryCost: 35.0, estimatedDaysMin: 1, estimatedDaysMax: 3 },
+      { pincode: '201301', city: 'Noida', state: 'Uttar Pradesh', deliveryCost: 35.0, estimatedDaysMin: 1, estimatedDaysMax: 3 },
+      { pincode: '90210', city: 'Beverly Hills', state: 'CA', country: 'USA', deliveryCost: 250.0, estimatedDaysMin: 7, estimatedDaysMax: 14, cashOnDelivery: false },
+    ]
   });
 
   console.log('🎉 AURORA Premium Database MASSIVE Seeding Finished Successfully!');

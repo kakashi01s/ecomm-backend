@@ -76,12 +76,32 @@ export class CategoryRepository {
     }
 
     /**
+     * getCategoryFamilyIds
+     * Recursively fetches all category IDs including descendants.
+     */
+    static async getCategoryFamilyIds(id) {
+        const category = await prisma.category.findUnique({
+            where: { id: parseInt(id) },
+            include: { children: { select: { id: true } } }
+        });
+        if (!category) return [];
+        let ids = [category.id];
+        for (const child of category.children) {
+            const childIds = await this.getCategoryFamilyIds(child.id);
+            ids = [...ids, ...childIds];
+        }
+        return ids;
+    }
+
+    /**
      * getCategoryWithProducts
-     * Fetches products for a category with optional sorting and filtering.
+     * Fetches products for a category and its subcategories with optional sorting and filtering.
      */
     static async getCategoryWithProducts(categoryId, { sort, minPrice, maxPrice, colors, sizes }) {
+        const allCategoryIds = await this.getCategoryFamilyIds(categoryId);
+
         const where = {
-            categoryId: parseInt(categoryId),
+            categoryId: { in: allCategoryIds },
             isActive: true,
         };
 
@@ -129,19 +149,19 @@ export class CategoryRepository {
 
     /**
      * getDynamicFilters
-     * Gathers all available colors, sizes, and price bounds for a category.
+     * Gathers all available colors, sizes, and price bounds for a category and its descendants.
      */
     static async getDynamicFilters(categoryId) {
-        const catId = parseInt(categoryId);
+        const allCategoryIds = await this.getCategoryFamilyIds(categoryId);
 
         const [priceBounds, variants] = await Promise.all([
             prisma.product.aggregate({
-                where: { categoryId: catId, isActive: true },
+                where: { categoryId: { in: allCategoryIds }, isActive: true },
                 _min: { price: true },
                 _max: { price: true }
             }),
             prisma.productVariant.findMany({
-                where: { product: { categoryId: catId, isActive: true } },
+                where: { product: { categoryId: { in: allCategoryIds }, isActive: true } },
                 select: { color: true, size: true },
                 distinct: ['color', 'size']
             })

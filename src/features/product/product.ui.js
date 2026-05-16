@@ -161,7 +161,10 @@ export class ProductUI {
               children: [
                 stac.text("Delivering to {{activePincode}}", { style: stac.textStyle({ fontSize: 14, fontWeight: "bold", color: Brand.textPrimary }) }),
                 stac.sizedBox({ height: 4 }),
-                stac.text("Standard Delivery: Tomorrow", { style: stac.textStyle({ fontSize: 12, fontWeight: "w500", color: "#10B981" }) }), 
+                stac.reactiveBuilder({
+                  listenTo: ["delivery_msg"],
+                  child: stac.text("{{delivery_msg}}", { style: stac.textStyle({ fontSize: 12, fontWeight: "w500", color: "#10B981" }) })
+                }), 
               ]
             })
           }),

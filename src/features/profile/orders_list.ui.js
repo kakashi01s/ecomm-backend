@@ -11,7 +11,9 @@ const STATUS_CONFIG = {
   SHIPPED:    { label: "Shipped",     color: "#00BCD4", bg: "#E0F7FA", icon: "local_shipping" },
   DELIVERED:  { label: "Delivered",   color: "#4CAF50", bg: "#E8F5E9", icon: "done_all" },
   CANCELLED:  { label: "Cancelled",   color: "#D32F2F", bg: "#FFEBEE", icon: "cancel" },
+  RETURN_REQUESTED: { label: "Return Requested", color: "#607D8B", bg: "#ECEFF1", icon: "assignment_return" },
   RETURNED:   { label: "Returned",    color: "#795548", bg: "#EFEBE9", icon: "replay" },
+  REFUNDED:   { label: "Refunded",    color: "#009688", bg: "#E0F2F1", icon: "account_balance_wallet" },
 };
 
 export class OrdersListUI {

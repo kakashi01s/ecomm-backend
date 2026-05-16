@@ -6,7 +6,9 @@ import { Endpoints } from "../../core/constants/apiEndpoints.js";
 
 export class AddressListUI {
 
-  static build(addresses = []) {
+  static build() {
+    const stateKey = "user_addresses";
+
     return stac.scaffold({
       backgroundColor: Brand.background,
       appBar: ui.dynamicAppBar({
@@ -19,12 +21,18 @@ export class AddressListUI {
           },
         ],
       }),
-      body: addresses.length === 0
-        ? AddressListUI._emptyState()
-        : stac.listView({
+      body: stac.reactiveBuilder({
+        listenTo: [stateKey],
+        child: stac.conditionalWidget({
+          stateKey: stateKey,
+          expectedValue: null,
+          onTrue: AddressListUI._emptyState(),
+          onFalse: stac.listView({
             padding: [16, 16, 16, 100],
-            children: addresses.map((addr) => AddressListUI._addressCard(addr)),
+            children: `{{${stateKey}}}` 
           }),
+        })
+      }),
       floatingActionButton: {
         type: "floatingActionButton",
         onPressed: stac.navigate(Endpoints.PROFILE.ADDRESS_ADD, "push"),
@@ -34,194 +42,202 @@ export class AddressListUI {
     });
   }
 
-  static _addressCard(addr) {
-    const typeLabel = addr.type ?? "Home";
-    const typeIcon = typeLabel.toLowerCase() === "work" ? "business" : "home";
+  /**
+   * Helper to build the actual card UI from a list of address objects.
+   * This is called by the controller to populate the 'user_addresses' meta key.
+   */
+  static buildAddressCards(addresses = []) {
+    if (!addresses || addresses.length === 0) return null; // Returns null so conditionalWidget shows empty state
 
-    return stac.container({
-      margin: [0, 0, 0, 12],
-      decoration: {
-        color: Brand.surface,
-        borderRadius: Brand.radiusMedium,
-        border: {
-          color: addr.isDefault ? Brand.primary : Brand.divider,
-          width: addr.isDefault ? 1.5 : 1,
+    return addresses.map((addr) => {
+      const typeLabel = addr.type ?? "Home";
+      const typeIcon = typeLabel.toLowerCase() === "work" ? "business" : "home";
+
+      return stac.container({
+        margin: [0, 0, 0, 12],
+        decoration: {
+          color: Brand.surface,
+          borderRadius: Brand.radiusMedium,
+          border: {
+            color: addr.isDefault ? Brand.primary : Brand.divider,
+            width: addr.isDefault ? 1.5 : 1,
+          },
+          boxShadow: [
+            { color: "#0000000A", blurRadius: 6, spreadRadius: 0, offset: { dx: 0, dy: 2 } },
+          ],
         },
-        boxShadow: [
-          { color: "#0000000A", blurRadius: 6, spreadRadius: 0, offset: { dx: 0, dy: 2 } },
-        ],
-      },
-      child: stac.padding({
-        all: 16,
-        child: stac.column({
-          crossAxisAlignment: "stretch",
-          children: [
-
-            // Header row
-            stac.row({
-              children: [
-                stac.container({
-                  width: 36,
-                  height: 36,
-                  decoration: {
-                    color: addr.isDefault ? Brand.secondary : Brand.background,
-                    borderRadius: Brand.radiusSmall,
-                  },
-                  child: stac.center({
-                    child: stac.icon({
-                      icon: typeIcon,
-                      color: addr.isDefault ? Brand.primary : Brand.textSecondary,
-                      size: 20,
+        child: stac.padding({
+          all: 16,
+          child: stac.column({
+            crossAxisAlignment: "stretch",
+            children: [
+              // Header row
+              stac.row({
+                children: [
+                  stac.container({
+                    width: 36,
+                    height: 36,
+                    decoration: {
+                      color: addr.isDefault ? Brand.secondary : Brand.background,
+                      borderRadius: Brand.radiusSmall,
+                    },
+                    child: stac.center({
+                      child: stac.icon({
+                        icon: typeIcon,
+                        color: addr.isDefault ? Brand.primary : Brand.textSecondary,
+                        size: 20,
+                      }),
                     }),
                   }),
-                }),
-                stac.sizedBox({ width: 12 }),
-                stac.expanded({
-                  child: stac.column({
-                    crossAxisAlignment: "start",
-                    mainAxisSize: "min",
-                    children: [
-                      stac.row({
-                        children: [
-                          stac.text(typeLabel, {
-                            style: stac.textStyle({
-                              fontSize: 15,
-                              fontWeight: "bold",
-                              color: Brand.textPrimary,
+                  stac.sizedBox({ width: 12 }),
+                  stac.expanded({
+                    child: stac.column({
+                      crossAxisAlignment: "start",
+                      mainAxisSize: "min",
+                      children: [
+                        stac.row({
+                          children: [
+                            stac.text(typeLabel, {
+                              style: stac.textStyle({
+                                fontSize: 15,
+                                fontWeight: "bold",
+                                color: Brand.textPrimary,
+                              }),
                             }),
-                          }),
-                          stac.sizedBox({ width: 8 }),
-                          ...(addr.isDefault
-                            ? [
-                                stac.container({
-                                  padding: [8, 3, 8, 3],
-                                  decoration: {
-                                    color: Brand.secondary,
-                                    borderRadius: 10,
-                                  },
-                                  child: stac.text("Default", {
-                                    style: stac.textStyle({
-                                      fontSize: 10,
-                                      fontWeight: "bold",
-                                      color: Brand.primary,
+                            stac.sizedBox({ width: 8 }),
+                            ...(addr.isDefault
+                              ? [
+                                  stac.container({
+                                    padding: [8, 3, 8, 3],
+                                    decoration: {
+                                      color: Brand.secondary,
+                                      borderRadius: 10,
+                                    },
+                                    child: stac.text("Default", {
+                                      style: stac.textStyle({
+                                        fontSize: 10,
+                                        fontWeight: "bold",
+                                        color: Brand.primary,
+                                      }),
                                     }),
                                   }),
-                                }),
-                              ]
-                            : []),
+                                ]
+                              : []),
+                          ],
+                        }),
+                        stac.sizedBox({ height: 2 }),
+                        stac.text(addr.fullName ?? "", {
+                          style: stac.textStyle({ fontSize: 13, color: Brand.textSecondary }),
+                        }),
+                      ],
+                    }),
+                  }),
+                ],
+              }),
+
+              stac.sizedBox({ height: 12 }),
+              stac.divider({ color: Brand.divider, height: 1, thickness: 0.5 }),
+              stac.sizedBox({ height: 12 }),
+
+              // Address text
+              stac.text(
+                [addr.line1, addr.line2, addr.city, addr.state, addr.postal]
+                  .filter(Boolean)
+                  .join(", "),
+                {
+                  style: stac.textStyle({ fontSize: 14, color: Brand.textPrimary }),
+                }
+              ),
+
+              ...(addr.phone
+                ? [
+                    stac.sizedBox({ height: 6 }),
+                    stac.row({
+                      children: [
+                        stac.icon({ icon: "phone", color: Brand.textSecondary, size: 13 }),
+                        stac.sizedBox({ width: 4 }),
+                        stac.text(addr.phone, {
+                          style: stac.textStyle({ fontSize: 13, color: Brand.textSecondary }),
+                        }),
+                      ],
+                    }),
+                  ]
+                : []),
+
+              stac.sizedBox({ height: 14 }),
+
+              // Action row
+              stac.row({
+                mainAxisAlignment: "end",
+                children: [
+                  // Edit
+                  stac.inkWell({
+                    action: stac.navigate(Endpoints.PROFILE.ADDRESS_EDIT(addr.id), "push"),
+                    child: stac.container({
+                      padding: [12, 8, 12, 8],
+                      decoration: {
+                        color: Brand.background,
+                        borderRadius: Brand.radiusSmall,
+                        border: { color: Brand.divider, width: 1 },
+                      },
+                      child: stac.row({
+                        mainAxisSize: "min",
+                        children: [
+                          stac.icon({ icon: "edit", color: Brand.primary, size: 14 }),
+                          stac.sizedBox({ width: 4 }),
+                          stac.text("Edit", {
+                            style: stac.textStyle({
+                              fontSize: 13,
+                              color: Brand.primary,
+                              fontWeight: "w500",
+                            }),
+                          }),
                         ],
                       }),
-                      stac.sizedBox({ height: 2 }),
-                      stac.text(addr.name ?? "", {
-                        style: stac.textStyle({ fontSize: 13, color: Brand.textSecondary }),
+                    }),
+                  }),
+                  stac.sizedBox({ width: 10 }),
+                  // Delete
+                  stac.inkWell({
+                    action: stac.apiRequest({
+                      url: Endpoints.PROFILE.ADDRESS_DELETE(addr.id),
+                      method: "POST",
+                      // No more replace! The list updates reactively via meta.
+                      onSuccess: stac.showToast("Address deleted."),
+                      onError: stac.showToast("Delete failed.", {
+                        backgroundColor: Brand.error,
+                        textColor: "#FFFFFF",
                       }),
-                    ],
-                  }),
-                }),
-              ],
-            }),
-
-            stac.sizedBox({ height: 12 }),
-            stac.divider({ color: Brand.divider, height: 1, thickness: 0.5 }),
-            stac.sizedBox({ height: 12 }),
-
-            // Address text
-            stac.text(
-              [addr.line1, addr.line2, addr.city, addr.state, addr.pincode]
-                .filter(Boolean)
-                .join(", "),
-              {
-                style: stac.textStyle({ fontSize: 14, color: Brand.textPrimary }),
-              }
-            ),
-
-            ...(addr.phone
-              ? [
-                  stac.sizedBox({ height: 6 }),
-                  stac.row({
-                    children: [
-                      stac.icon({ icon: "phone", color: Brand.textSecondary, size: 13 }),
-                      stac.sizedBox({ width: 4 }),
-                      stac.text(addr.phone, {
-                        style: stac.textStyle({ fontSize: 13, color: Brand.textSecondary }),
+                    }),
+                    child: stac.container({
+                      padding: [12, 8, 12, 8],
+                      decoration: {
+                        color: "#FFEBEE",
+                        borderRadius: Brand.radiusSmall,
+                        border: { color: "#FFCDD2", width: 1 },
+                      },
+                      child: stac.row({
+                        mainAxisSize: "min",
+                        children: [
+                          stac.icon({ icon: "delete_outline", color: Brand.error, size: 14 }),
+                          stac.sizedBox({ width: 4 }),
+                          stac.text("Delete", {
+                            style: stac.textStyle({
+                              fontSize: 13,
+                              color: Brand.error,
+                              fontWeight: "w500",
+                            }),
+                          }),
+                        ],
                       }),
-                    ],
-                  }),
-                ]
-              : []),
-
-            stac.sizedBox({ height: 14 }),
-
-            // Action row
-            stac.row({
-              mainAxisAlignment: "end",
-              children: [
-                // Edit
-                stac.inkWell({
-                  action: stac.navigate(Endpoints.PROFILE.ADDRESS_EDIT(addr.id), "push"),
-                  child: stac.container({
-                    padding: [12, 8, 12, 8],
-                    decoration: {
-                      color: Brand.background,
-                      borderRadius: Brand.radiusSmall,
-                      border: { color: Brand.divider, width: 1 },
-                    },
-                    child: stac.row({
-                      mainAxisSize: "min",
-                      children: [
-                        stac.icon({ icon: "edit", color: Brand.primary, size: 14 }),
-                        stac.sizedBox({ width: 4 }),
-                        stac.text("Edit", {
-                          style: stac.textStyle({
-                            fontSize: 13,
-                            color: Brand.primary,
-                            fontWeight: "w500",
-                          }),
-                        }),
-                      ],
                     }),
                   }),
-                }),
-                stac.sizedBox({ width: 10 }),
-                // Delete
-                stac.inkWell({
-                  action: stac.apiRequest({
-                    url: Endpoints.PROFILE.ADDRESS_DELETE(addr.id),
-                    method: "POST",
-                    onSuccess: stac.navigate(Endpoints.PROFILE.ADDRESSES, "replace"),
-                    onError: stac.showToast("Delete failed.", {
-                      backgroundColor: Brand.error,
-                      textColor: "#FFFFFF",
-                    }),
-                  }),
-                  child: stac.container({
-                    padding: [12, 8, 12, 8],
-                    decoration: {
-                      color: "#FFEBEE",
-                      borderRadius: Brand.radiusSmall,
-                      border: { color: "#FFCDD2", width: 1 },
-                    },
-                    child: stac.row({
-                      mainAxisSize: "min",
-                      children: [
-                        stac.icon({ icon: "delete_outline", color: Brand.error, size: 14 }),
-                        stac.sizedBox({ width: 4 }),
-                        stac.text("Delete", {
-                          style: stac.textStyle({
-                            fontSize: 13,
-                            color: Brand.error,
-                            fontWeight: "w500",
-                          }),
-                        }),
-                      ],
-                    }),
-                  }),
-                }),
-              ],
-            }),
-          ],
+                ],
+              }),
+            ],
+          }),
         }),
-      }),
+      });
     });
   }
 
