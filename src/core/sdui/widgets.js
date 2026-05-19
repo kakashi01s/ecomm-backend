@@ -135,16 +135,20 @@ export const w = {
     });
   },
 
-  badgeIconButton: ({ icon, action, color, size, badgeType = "cart" }) => {
+  badgedIconButton: ({ icon, action, color, size, stateKey, badgeType = "cart" }) => {
     const badgeColor = badgeType === "cart" ? Brand.primary : "#4CAF50";
+    const resolvedStateKey = stateKey || `${badgeType}Count`;
+    
     return stac.center({
       child: stac.badge({
-        count: `{{${badgeType}Count}}`,
+        count: `{{${resolvedStateKey}}}`,
         color: badgeColor,
         textColor: "#FFFFFF",
         position: { top: 2, right: 2 },
         child: w.iconButton({ icon, action, color, size })
       })
     });
-  }
+  },
+
+  badgeIconButton: (args) => w.badgedIconButton(args)
 };

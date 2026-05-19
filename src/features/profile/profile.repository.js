@@ -30,10 +30,17 @@ static async updateUser(userId, { name, phone, avatarUrl, activePincode }) {
   }
 
   static async createAddress(userId, data) {
-    const isDefault = data.isDefault === true || data.isDefault === "true";
-    if (isDefault) {
+    const addressCount = await prisma.address.count({ where: { userId } });
+    
+    // If first address, always make it default. Otherwise use passed flag.
+    let isDefault = addressCount === 0 
+      ? true 
+      : (data.isDefault === true || data.isDefault === "true");
+
+    if (isDefault && addressCount > 0) {
       await prisma.address.updateMany({ where: { userId }, data: { isDefault: false } });
     }
+
     return prisma.address.create({ 
       data: { 
         ...data, 

@@ -19,6 +19,7 @@ export const SDUIConfig = {
       'icon',
       'mediaUrl',
       'thumbnail',
-      'linkUrl'
+      'linkUrl',
+      'count'
     ]
   };

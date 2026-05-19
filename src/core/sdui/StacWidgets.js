@@ -212,15 +212,74 @@ export const stac = {
   }),
 
   sliverToBoxAdapter: ({ child }) => ({ type: "sliverToBoxAdapter", child }),
+  
+  sliverList: ({ delegate }) => ({
+    type: "sliverList",
+    delegate: delegate || { type: "sliverChildBuilderDelegate", children: [] }
+  }),
+
+  sliverGrid: ({ delegate, gridDelegate }) => ({
+    type: "sliverGrid",
+    delegate,
+    gridDelegate: gridDelegate || { type: "sliverGridDelegateWithFixedCrossAxisCount", crossAxisCount: 2 }
+  }),
+
   hero: ({ tag, child }) => ({ type: "hero", tag, child }),
   
   svg: ({ src, isNetwork = false, color, width, height, rotationDegrees = 0 }) => ({
     type: "svg_asset", src, isNetwork, color, width, height, rotationDegrees
   }),
 
-  badge: ({ child, count, color = "#D32F2F", textColor = "#FFFFFF", size = 16, position = { top: 0, right: 0 } }) => ({
-    type: "badge", count: count ?? undefined, color, textColor, size, position, child,
-  }),
+  badge: ({ child, count, color = "#D32F2F", textColor = "#FFFFFF", size = 18, position = { top: 0, right: 0 } }) => {
+    // Determine the state key if count is a placeholder (e.g., {{cartCount}})
+    const isPlaceholder = typeof count === 'string' && count.startsWith('{{') && count.endsWith('}}');
+    const stateKey = isPlaceholder ? count.substring(2, count.length - 2) : null;
+
+    const badgeContainer = stac.container({
+      padding: [4, 0, 4, 0],
+      constraints: { minWidth: size, minHeight: size },
+      decoration: { 
+        color, 
+        shape: "circle", 
+        border: { color: "#FFFFFF", width: 1.5 },
+        boxShadow: [{ color: "#00000033", blurRadius: 4, offset: { dx: 0, dy: 2 } }]
+      },
+      child: stac.center({
+        child: stac.text(count, {
+          style: stac.textStyle({ color: textColor, fontSize: size * 0.55, fontWeight: "bold" })
+        })
+      })
+    });
+
+    // If it's a dynamic count, we use conditional_widget to hide it when 0
+    const resolvedBadge = stateKey 
+      ? stac.conditionalWidget({
+          stateKey,
+          expectedValue: 0,
+          defaultValue: 0,
+          onTrue: stac.sizedBox({ width: 0, height: 0 }),
+          onFalse: stac.conditionalWidget({
+            stateKey,
+            expectedValue: "0",
+            defaultValue: "0",
+            onTrue: stac.sizedBox({ width: 0, height: 0 }),
+            onFalse: badgeContainer
+          })
+        })
+      : (count === 0 || count === "0" ? stac.sizedBox({ width: 0, height: 0 }) : badgeContainer);
+
+    return stac.stack({
+      clipBehavior: "none",
+      children: [
+        child,
+        stac.positioned({
+          top: position.top,
+          right: position.right,
+          child: resolvedBadge
+        })
+      ]
+    });
+  },
 
   video: ({ src, autoPlay = true, loop = true, muted = true, showControls = false, width, height, fit = "cover" }) => ({
     type: "video", src, autoPlay, loop, muted, showControls, width, height, fit

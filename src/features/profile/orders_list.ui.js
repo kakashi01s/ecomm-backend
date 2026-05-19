@@ -132,7 +132,7 @@ export class OrdersListUI {
                   stac.clipRRect({
                     borderRadius: Brand.radiusSmall,
                     child: stac.image({
-                      src: firstItem?.product?.images?.[0] ?? "https://via.placeholder.com/64",
+                      src: firstItem?.product?.images?.[0]?.url || firstItem?.product?.images?.[0] || "https://via.placeholder.com/64",
                       width: 60,
                       height: 60,
                       fit: "cover",

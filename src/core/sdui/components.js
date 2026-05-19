@@ -626,8 +626,33 @@ productCard: ({
     return stac.appBar(appBarProps);
   },
 
-mediaCarousel: ({ items = [], height = 400, borderRadius = 0, showDots = true, autoPlay = true, viewportFraction = 1.0 }) => {
-    
+// ─── ERROR STATE ────────────────────────────────────────────────
+errorState: ({ message, actionText = "Try Again", action }) =>
+  stac.center({
+    child: stac.padding({
+      all: 32,
+      child: stac.column({
+        mainAxisAlignment: "center",
+        crossAxisAlignment: "center",
+        children: [
+          stac.icon({ icon: "error_outline", color: Brand.error, size: 64 }),
+          stac.sizedBox({ height: 16 }),
+          stac.text("Oops! Something went wrong", {
+            style: stac.textStyle({ fontSize: 18, fontWeight: "bold", color: Brand.textPrimary }),
+          }),
+          stac.sizedBox({ height: 8 }),
+          stac.text(message || "We couldn't load the information.", {
+            textAlign: "center",
+            style: stac.textStyle({ fontSize: 14, color: Brand.textSecondary }),
+          }),
+          stac.sizedBox({ height: 24 }),
+          action ? w.button({ text: actionText, action }) : stac.sizedBox(),
+        ],
+      }),
+    }),
+  }),
+
+mediaCarousel: ({ items = [], height = 400, borderRadius = 0, showDots = true, autoPlay = true, viewportFraction = 1.0 }) => {    
     // यह आपका Backend-Driven Error Widget है
     const defaultErrorWidget = {
       type: "container",

@@ -35,10 +35,13 @@ export class ProductUI {
               }),
             }),
           }),
-          w.badgedIconButton({
-            icon: AppIcons.CART,
-            stateKey: "cartCount",
-            action: stac.navigate(Endpoints.CART.BASE),
+          stac.reactiveBuilder({
+            listenTo: ["cartCount"],
+            child: w.badgedIconButton({
+              icon: AppIcons.CART,
+              stateKey: "cartCount",
+              action: stac.navigate(Endpoints.CART.BASE),
+            }),
           }),
         ],
       }),
